@@ -5,6 +5,7 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
     // Can I read and print the contents iteratively in a stream?
     let contents = fs::read_to_string(&config.file_path)?;
 
+    // Can I return an iterator of &str instead of a Vec<&str>?
     let ret = if config.ignore_case {
         search_case_insensitive(&config.query, &contents)
     } else {
