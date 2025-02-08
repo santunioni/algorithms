@@ -5,33 +5,32 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
     // Can I read and print the contents iteratively in a stream?
     let contents = fs::read_to_string(&config.file_path)?;
 
-    // Can I return an iterator of &str instead of a Vec<&str>?
-    // I am creating an unnecessary array here.
-    let ret = if config.ignore_case {
-        search_case_insensitive(&config.query, &contents)
+    let search_result_iter: Box<dyn Iterator<Item=&str>>;
+    if config.ignore_case {
+        let iter = search_case_insensitive(&config.query, &contents);
+        search_result_iter = Box::new(iter);
     } else {
-        search(&config.query, &contents)
+        let iter = search(&config.query, &contents);
+        search_result_iter = Box::new(iter);
     };
 
-    for line in ret {
+    for line in search_result_iter {
         println!("{}", line)
     }
     Ok(())
 }
 
-pub fn search<'b>(query: &str, contents: &'b str) -> Vec<&'b str> {
+pub fn search<'a>(query: &'a str, contents: &'a str) -> impl Iterator<Item=&'a str> + 'a {
     contents
         .lines()
-        .filter(|line| line.contains(query))
-        .collect()
+        .filter(move |line| line.contains(query))
 }
 
-pub fn search_case_insensitive<'b>(query: &str, contents: &'b str) -> Vec<&'b str> {
+pub fn search_case_insensitive<'a>(query: &'a str, contents: &'a str) -> impl Iterator<Item=&'a str> + 'a {
     let lower_cased_query = query.to_lowercase();
     contents
         .lines()
-        .filter(|line| line.to_lowercase().contains(&lower_cased_query))
-        .collect()
+        .filter(move |line| line.to_lowercase().contains(&lower_cased_query))
 }
 
 #[derive(Debug)]

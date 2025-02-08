@@ -9,7 +9,8 @@ safe, fast, productive.
 Pick three.
 Duct tape.";
 
-    assert_eq!(vec!["safe, fast, productive."], search(query, contents));
+    let result: Vec<&str> = search(query, contents).collect();
+    assert_eq!(vec!["safe, fast, productive."], result);
 }
 
 #[test]
@@ -21,8 +22,9 @@ safe, fast, productive.
 Pick three.
 Trust me.";
 
+    let result: Vec<&str> = search_case_insensitive(query, contents).collect();
     assert_eq!(
         vec!["Rust:", "Trust me."],
-        search_case_insensitive(query, contents)
+        result
     );
 }
