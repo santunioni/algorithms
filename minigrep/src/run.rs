@@ -9,6 +9,7 @@ pub fn run(args: Vec<String>) {
     });
 
     // Can I read and print the contents iteratively in a stream?
+    // Instead of reading all contents to array.
     let contents = fs::read_to_string(&search_input.file_path).unwrap_or_else(|err| {
         eprintln!("Problem opening file: {err}");
         process::exit(1)
