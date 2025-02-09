@@ -15,7 +15,7 @@ pub fn run(args: Vec<String>) {
         process::exit(1)
     });
 
-    let search_result_iter: Box<dyn Iterator<Item=&str>>;
+    let search_result_iter: Box<dyn Iterator<Item = &str>>;
     if search_input.ignore_case {
         let iter = search_case_insensitive(&search_input.query, &contents);
         search_result_iter = Box::new(iter);

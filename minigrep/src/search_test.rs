@@ -23,8 +23,5 @@ Pick three.
 Trust me.";
 
     let result: Vec<&str> = search_case_insensitive(query, contents).collect();
-    assert_eq!(
-        vec!["Rust:", "Trust me."],
-        result
-    );
+    assert_eq!(vec!["Rust:", "Trust me."], result);
 }

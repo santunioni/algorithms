@@ -10,7 +10,8 @@ impl SearchInput {
     pub fn build(args: Vec<String>) -> Result<SearchInput, &'static str> {
         let query = Self::read_string_variable(&args, "search-query").unwrap_or(String::new());
         let ignore_case = Self::read_boolean_variable(&args, "ignore-case");
-        let file_path = Self::read_string_variable(&args, "file-path").ok_or("Missing file-path variable")?;
+        let file_path =
+            Self::read_string_variable(&args, "file-path").ok_or("Missing file-path variable")?;
 
         Ok(SearchInput {
             query,
@@ -21,7 +22,6 @@ impl SearchInput {
 
     fn read_boolean_variable(args: &Vec<String>, var_name: &str) -> bool {
         let (env_var_name, flag_name) = Self::var_name_variations(var_name);
-
 
         for flag in args.iter() {
             if flag.eq(&flag_name) {
@@ -34,7 +34,6 @@ impl SearchInput {
             Err(_) => false,
         }
     }
-
 
     fn read_string_variable(args: &Vec<String>, var_name: &str) -> Option<String> {
         let (env_var_name, flag_name) = Self::var_name_variations(var_name);
