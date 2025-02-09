@@ -1,7 +1,7 @@
-use minigrep::run;
+use minigrep::run_with_args;
 use std::env;
 
 fn main() {
     let args = env::args().collect();
-    run::run(args)
+    run_with_args(args, true)
 }

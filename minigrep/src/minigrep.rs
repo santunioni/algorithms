@@ -2,7 +2,12 @@ use crate::search::{search, search_case_insensitive};
 use crate::search_input::SearchInput;
 use std::{fs, process};
 
-pub fn run(args: Vec<String>) {
+pub fn run_with_command(command: &str, enable_print: bool) {
+    let args: Vec<String> = command.split(" ").map(|s| s.to_string()).collect();
+    run_with_args(args, enable_print);
+}
+
+pub fn run_with_args(args: Vec<String>, enable_print: bool) {
     let search_input = SearchInput::build(args).unwrap_or_else(|err| {
         eprintln!("Problem parsing arguments: {err}");
         process::exit(1);
@@ -25,6 +30,8 @@ pub fn run(args: Vec<String>) {
     };
 
     for line in search_result_iter {
-        println!("{}", line)
+        if enable_print {
+            println!("{}", line)
+        }
     }
 }

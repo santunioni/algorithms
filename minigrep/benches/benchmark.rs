@@ -1,5 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use minigrep::search::{search, search_case_insensitive};
+use criterion::{criterion_group, criterion_main, Criterion};
+use minigrep::run_with_command;
+use std::fs;
 
 fn criterion_benchmark(c: &mut Criterion) {
     let contents = "\
@@ -13,14 +14,19 @@ How public, like a frog
 To tell your name the livelong day
 To an admiring bog!";
 
-    c.bench_function("search", |b| {
-        b.iter(|| search(black_box("Nobody"), black_box(contents)));
-        b.iter(|| search(black_box("nobody"), black_box(contents)))
+    let file_path = "/tmp/benchmark-text.txt";
+
+    fs::write(&file_path, contents).expect("Benchmark text should be writtem");
+
+    let command_case_sensitive = format!("minigrep --file-path={file_path} --query=nobody");
+    let command_case_insensitive = format!("minigrep --file-path={file_path} --query=Nobody --ignore-case");
+
+    c.bench_function("search case sensitive", |b| {
+        b.iter(|| run_with_command(&command_case_sensitive, false))
     });
 
-    c.bench_function("search_case_insensitive", |b| {
-        b.iter(|| search_case_insensitive(black_box("Nobody"), black_box(contents)));
-        b.iter(|| search_case_insensitive(black_box("nobody"), black_box(contents)))
+    c.bench_function("search case insensitive", |b| {
+        b.iter(|| run_with_command(&command_case_insensitive, false))
     });
 }
 
