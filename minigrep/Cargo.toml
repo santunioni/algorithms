@@ -1,7 +1,10 @@
 [package]
-name = "minigrep"
+name = "minigrep-santunioni"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "A lightweight version of grep"
+authors = ["Vinícius Vargas <santunionivinicius@gmail.com>"]
 
 
 [[bench]]
