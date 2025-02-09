@@ -1,4 +1,4 @@
-use crate::{search, search_case_insensitive};
+use crate::search::{search, search_case_insensitive};
 
 #[test]
 fn case_sensitive() {

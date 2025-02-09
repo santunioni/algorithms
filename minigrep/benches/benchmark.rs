@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use minigrep::{search, search_case_insensitive};
+use minigrep::search::{search, search_case_insensitive};
 
 fn criterion_benchmark(c: &mut Criterion) {
     let contents = "\
