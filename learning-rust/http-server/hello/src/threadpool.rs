@@ -3,8 +3,8 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 
 pub struct ThreadPool {
-    _workers: Vec<Worker>,
-    sender: mpsc::Sender<Job>,
+    workers: Vec<Worker>,
+    sender: Option<mpsc::Sender<Job>>,
 }
 
 impl ThreadPool {
@@ -27,8 +27,8 @@ impl ThreadPool {
         }
 
         ThreadPool {
-            _workers: workers,
-            sender,
+            workers,
+            sender: Some(sender),
         }
     }
 
@@ -36,7 +36,19 @@ impl ThreadPool {
     where
         F: FnOnce() + Send + 'static,
     {
-        self.sender.send(Box::new(runnable)).unwrap()
+        match &self.sender {
+            Some(sender) => sender.send(Box::new(runnable)).unwrap(),
+            None => panic!("ThreadPool::execute called after ThreadPool::drop"),
+        }
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        drop(self.sender.take());
+        for worker in &mut self.workers.drain(..) {
+            worker.handle.join().unwrap();
+        }
     }
 }
 
@@ -51,8 +63,9 @@ impl Worker {
                 .lock()
                 .expect("Couldn't acquire lock to the Receiver");
             println!("Worker {id} acquired the lock.");
-            let job = lock.recv().unwrap();
+            let job: Box<dyn FnOnce() + Send> = lock.recv().unwrap();
             drop(lock);
+            println!("Worker {id} dropped the lock and is running the job.");
             job();
         });
         Worker { handle }
