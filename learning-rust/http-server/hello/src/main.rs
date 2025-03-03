@@ -8,7 +8,7 @@ fn main() {
     for stream in listener.incoming() {
         let stream = stream.unwrap();
         println!(
-            "Connection established. I should interpret the request and send a response to {}",
+            "Connection established.\nI should interpret the request and send a response to {}\n",
             stream.peer_addr().unwrap().to_string()
         );
         handle_connection(stream)
@@ -16,21 +16,46 @@ fn main() {
 }
 
 fn handle_connection(mut stream: TcpStream) {
-    let buf_reader = BufReader::new(&stream);
-    let http_request: Vec<_> = buf_reader
-        .lines()
-        .map(|result| result.unwrap())
-        .take_while(|line| !line.is_empty())
-        .collect();
+    let mut buf_reader_lines_iterator = BufReader::new(&stream).lines();
 
-    println!("Request: {http_request:#?}");
+    let request_line = buf_reader_lines_iterator.next().unwrap().unwrap();
+    println!("{}\r\n", request_line);
 
-    let file = fs::read("resources/hello.html").unwrap();
-    let response = format!(
-        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n",
-        file.len()
+    if request_line == "GET / HTTP/1.1" {
+        stream.write_file_response(
+            "HTTP/1.1 200 OK",
+            "resources/hello.html",
+        )
+    } else {
+        stream.write_file_response(
+            "HTTP/1.1 404 NOT FOUND",
+            "resources/404.html",
+        );
+    }
+}
+
+trait ResponseFile {
+    fn write_file_response(
+        &mut self,
+        status_line: &str,
+        file_path: &str,
     );
+}
 
-    stream.write_all(response.as_bytes()).unwrap();
-    stream.write_all(&file[..]).unwrap();
+impl ResponseFile for TcpStream {
+    fn write_file_response(
+        &mut self,
+        status_line: &str,
+        file_path: &str,
+    ) {
+        let file = fs::read(file_path).unwrap();
+        let response = format!(
+            "{}\r\nContent-Length: {}\r\n\r\n",
+            status_line,
+            file.len()
+        );
+
+        self.write_all(response.as_bytes()).unwrap();
+        self.write_all(&file[..]).unwrap();
+    }
 }
