@@ -1,10 +1,13 @@
-use std::io::{prelude::*, BufReader};
-use std::net::{TcpListener, TcpStream};
-use std::time::Duration;
-use std::{fs, thread};
+use std::net::TcpListener;
+use threadpool::ThreadPool;
+
+mod threadpool;
+mod http_handling;
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+
+    let mut pool = ThreadPool::new(4);
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
@@ -12,59 +15,10 @@ fn main() {
             "Connection established.\nI should interpret the request and send a response to {}\n",
             stream.peer_addr().unwrap().to_string()
         );
-        thread::spawn(|| {
-            handle_connection(stream);
+        pool.execute(|| {
+            http_handling::handle_connection(stream);
         });
     }
 }
 
-fn handle_connection(mut stream: TcpStream) {
-    let mut buf_reader_lines_iterator = BufReader::new(&stream).lines();
 
-    let request_line = buf_reader_lines_iterator.next().unwrap().unwrap();
-    println!("{}\r\n", request_line);
-
-    match &request_line[..] {
-        "GET / HTTP/1.1" => stream.write_file_response(
-            "HTTP/1.1 200 OK",
-            "resources/hello.html",
-        ),
-        "GET /sleep HTTP/1.1" => {
-            thread::sleep(Duration::from_secs(5));
-            stream.write_file_response(
-                "HTTP/1.1 200 OK",
-                "resources/hello.html",
-            )
-        }
-        _ => stream.write_file_response(
-            "HTTP/1.1 404 NOT FOUND",
-            "resources/404.html",
-        ),
-    };
-}
-
-trait ResponseFile {
-    fn write_file_response(
-        &mut self,
-        status_line: &str,
-        file_path: &str,
-    );
-}
-
-impl ResponseFile for TcpStream {
-    fn write_file_response(
-        &mut self,
-        status_line: &str,
-        file_path: &str,
-    ) {
-        let file = fs::read(file_path).unwrap();
-        let response = format!(
-            "{}\r\nContent-Length: {}\r\n\r\n",
-            status_line,
-            file.len()
-        );
-
-        self.write_all(response.as_bytes()).unwrap();
-        self.write_all(&file[..]).unwrap();
-    }
-}
