@@ -1,6 +1,7 @@
-use std::fs;
 use std::io::{prelude::*, BufReader};
 use std::net::{TcpListener, TcpStream};
+use std::time::Duration;
+use std::{fs, thread};
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
@@ -21,17 +22,23 @@ fn handle_connection(mut stream: TcpStream) {
     let request_line = buf_reader_lines_iterator.next().unwrap().unwrap();
     println!("{}\r\n", request_line);
 
-    if request_line == "GET / HTTP/1.1" {
-        stream.write_file_response(
+    match &request_line[..] {
+        "GET / HTTP/1.1" => stream.write_file_response(
             "HTTP/1.1 200 OK",
             "resources/hello.html",
-        )
-    } else {
-        stream.write_file_response(
+        ),
+        "GET /sleep HTTP/1.1" => {
+            thread::sleep(Duration::from_secs(5));
+            stream.write_file_response(
+                "HTTP/1.1 200 OK",
+                "resources/hello.html",
+            )
+        }
+        _ => stream.write_file_response(
             "HTTP/1.1 404 NOT FOUND",
             "resources/404.html",
-        );
-    }
+        ),
+    };
 }
 
 trait ResponseFile {
