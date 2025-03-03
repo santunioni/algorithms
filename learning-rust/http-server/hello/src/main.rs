@@ -12,7 +12,9 @@ fn main() {
             "Connection established.\nI should interpret the request and send a response to {}\n",
             stream.peer_addr().unwrap().to_string()
         );
-        handle_connection(stream)
+        thread::spawn(|| {
+            handle_connection(stream);
+        });
     }
 }
 
