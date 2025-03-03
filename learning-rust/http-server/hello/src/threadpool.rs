@@ -41,20 +41,23 @@ impl ThreadPool {
 }
 
 struct Worker {
-    _handle: thread::JoinHandle<()>,
+    handle: thread::JoinHandle<()>,
 }
 
 impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<Receiver<Job>>>) -> Worker {
         let handle = thread::spawn(move || loop {
+            println!("Worker {id} is trying to acquire lock");
             let lock = receiver
                 .lock()
                 .expect("Couldn't acquire lock to the Receiver");
+            println!("Worker {id} waiting for a job.");
+
             let job = lock.recv().unwrap();
             println!("Worker {id} got a job; executing.");
             job();
         });
-        Worker { _handle: handle }
+        Worker { handle }
     }
 }
 
