@@ -4,16 +4,8 @@ use std::time::Duration;
 use std::{fs, thread};
 
 pub fn handle_connection(mut stream: TcpStream) {
-    println!(
-        "Connection established. I should interpret the request and send a response to {}",
-        stream.peer_addr().unwrap().to_string()
-    );
-
     let mut buf_reader_lines_iterator = BufReader::new(&stream).lines();
-
     let request_line = buf_reader_lines_iterator.next().unwrap().unwrap();
-    println!("{}\r\n", request_line);
-
     match &request_line[..] {
         "GET / HTTP/1.1" => stream.write_file_response("HTTP/1.1 200 OK", "resources/hello.html"),
         "GET /sleep HTTP/1.1" => {

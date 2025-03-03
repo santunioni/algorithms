@@ -47,14 +47,12 @@ struct Worker {
 impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<Receiver<Job>>>) -> Worker {
         let handle = thread::spawn(move || loop {
-            println!("Worker {id} is trying to acquire lock");
             let lock = receiver
                 .lock()
                 .expect("Couldn't acquire lock to the Receiver");
-            println!("Worker {id} waiting for a job.");
-
+            println!("Worker {id} acquired the lock.");
             let job = lock.recv().unwrap();
-            println!("Worker {id} got a job; executing.");
+            drop(lock);
             job();
         });
         Worker { handle }
