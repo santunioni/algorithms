@@ -1,3 +1,4 @@
+use std::fs;
 use std::io::{prelude::*, BufReader};
 use std::net::{TcpListener, TcpStream};
 
@@ -24,6 +25,12 @@ fn handle_connection(mut stream: TcpStream) {
 
     println!("Request: {http_request:#?}");
 
-    let response = "HTTP/1.1 200 OK\r\n\r\nHello, World!\r\n";
+    let file = fs::read("resources/hello.html").unwrap();
+    let response = format!(
+        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n",
+        file.len()
+    );
+
     stream.write_all(response.as_bytes()).unwrap();
+    stream.write_all(&file[..]).unwrap();
 }
