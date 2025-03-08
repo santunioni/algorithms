@@ -15,24 +15,21 @@ fn replace_me(input: &str) -> String {
     // TODO: Replace "cars" in the string with "balloons".
     // input.replace("cars", "balloons") // This is the solution that uses method
 
-    let mut new_str = String::new();
-
+    // Write manual solution just for fun
+    let mut new_str = String::with_capacity(input.len());
     let mut matching_index = 0;
     for c in input.chars() {
-        if c == CARS[matching_index] {
+        if matching_index < 4 && c == CARS[matching_index] {
             matching_index += 1;
         } else {
-            for c1 in &CARS[0..matching_index] {
-                new_str.push(*c1)
-            }
+            new_str.extend(&CARS[0..matching_index]);
             matching_index = 0;
             new_str.push(c);
+            continue
         }
 
-        if matching_index == 4 {
-            for c1 in BALOON.chars() {
-                new_str.push(c1);
-            }
+        if matching_index == CARS.len() {
+            new_str.push_str(BALOON);
             matching_index = 0;
         }
     }
