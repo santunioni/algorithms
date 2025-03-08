@@ -1,6 +1,6 @@
 DON'T EDIT THIS FILE!
 
-errors1
+errors5
 
 intro1
 intro2
@@ -52,3 +52,7 @@ quiz2
 options1
 options2
 options3
+errors1
+errors2
+errors3
+errors4
