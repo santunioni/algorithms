@@ -29,14 +29,8 @@ fn divide(a: i64, b: i64) -> Result<i64, DivisionError> {
 // Desired output: `Ok([1, 11, 1426, 3])`
 fn result_with_list() -> Result<Vec<i64>, DivisionError> {
     let numbers = [27, 297, 38502, 81];
-
-    let mut division_results: Vec<i64> = Vec::with_capacity(4);
-
-    for n in numbers {
-        division_results.push(divide(n, 27)?);
-    }
-
-    Ok(division_results)
+    let division_results = numbers.into_iter().map(|n| divide(n, 27));
+    division_results.collect::<Result<Vec<i64>, DivisionError>>()
 }
 
 // TODO: Add the correct return type and complete the function body.
@@ -44,7 +38,7 @@ fn result_with_list() -> Result<Vec<i64>, DivisionError> {
 fn list_of_results() -> Vec<Result<i64, DivisionError>> {
     let numbers = [27, 297, 38502, 81];
     let division_results = numbers.into_iter().map(|n| divide(n, 27));
-    division_results.collect()
+    division_results.collect::<Vec<Result<i64, DivisionError>>>()
 }
 
 fn main() {
