@@ -4,7 +4,7 @@ enum Message {
     Move,
     Echo,
     ChangeColor,
-    Quit
+    Quit,
 }
 
 fn main() {

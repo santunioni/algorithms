@@ -7,7 +7,7 @@ fn bigger(a: i32, b: i32) -> i32 {
 }
 
 fn main() {
-    println!("{}", bigger(1,2))
+    println!("{}", bigger(1, 2))
 }
 
 // Don't mind this for now :)

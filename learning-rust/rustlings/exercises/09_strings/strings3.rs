@@ -1,13 +1,43 @@
 fn trim_me(input: &str) -> &str {
     // TODO: Remove whitespace from both ends of a string.
+    input.trim()
 }
 
 fn compose_me(input: &str) -> String {
     // TODO: Add " world!" to the string! There are multiple ways to do this.
+    format!("{input} world!")
 }
+
+const BALOON: &str = "balloons";
+const CARS: [char; 4] = ['c', 'a', 'r', 's'];
 
 fn replace_me(input: &str) -> String {
     // TODO: Replace "cars" in the string with "balloons".
+    // input.replace("cars", "balloons") // This is the solution that uses method
+
+    let mut new_str = String::new();
+
+    let mut matching_index = 0;
+    for c in input.chars() {
+        if c == CARS[matching_index] {
+            matching_index += 1;
+        } else {
+            for c1 in &CARS[0..matching_index] {
+                new_str.push(*c1)
+            }
+            matching_index = 0;
+            new_str.push(c);
+        }
+
+        if matching_index == 4 {
+            for c1 in BALOON.chars() {
+                new_str.push(c1);
+            }
+            matching_index = 0;
+        }
+    }
+
+    new_str
 }
 
 fn main() {

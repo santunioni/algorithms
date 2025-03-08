@@ -45,7 +45,7 @@ mod tests {
             name: "Hacker in Rust".to_string(),
             count: 1,
             ..order_template
-        } ;
+        };
 
         assert_eq!(your_order.name, "Hacker in Rust");
         assert_eq!(your_order.year, order_template.year);

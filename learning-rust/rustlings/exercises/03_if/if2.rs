@@ -3,7 +3,7 @@ fn picky_eater(food: &str) -> &str {
     match food {
         "strawberry" => "Yummy!",
         "potato" => "I guess I can eat that.",
-        _ => "No thanks!"
+        _ => "No thanks!",
     }
 }
 

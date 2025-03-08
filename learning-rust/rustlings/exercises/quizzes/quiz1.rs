@@ -13,13 +13,10 @@
 // fn calculate_price_of_apples(???) -> ??? { ??? }
 
 fn calculate_price_of_apples(quantity: u32) -> u32 {
-    quantity * if quantity > 40 {
-        1
-    } else { 2 }
+    quantity * if quantity > 40 { 1 } else { 2 }
 }
 
-fn main() {
-}
+fn main() {}
 
 // Don't change the tests!
 #[cfg(test)]
