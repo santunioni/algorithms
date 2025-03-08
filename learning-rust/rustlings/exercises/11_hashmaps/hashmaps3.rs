@@ -7,12 +7,24 @@
 // conceded.
 
 use std::collections::HashMap;
+use std::ops;
 
 // A structure to store the goal details of a team.
 #[derive(Default)]
 struct TeamScores {
     goals_scored: u8,
     goals_conceded: u8,
+}
+
+impl ops::Add<TeamScores> for TeamScores {
+    type Output = TeamScores;
+
+    fn add(self, rhs: TeamScores) -> TeamScores {
+        TeamScores {
+            goals_scored: self.goals_scored + rhs.goals_scored,
+            goals_conceded: self.goals_conceded + rhs.goals_conceded
+        }
+    }
 }
 
 fn build_scores_table(results: &str) -> HashMap<&str, TeamScores> {
@@ -31,6 +43,16 @@ fn build_scores_table(results: &str) -> HashMap<&str, TeamScores> {
         // Keep in mind that goals scored by team 1 will be the number of goals
         // conceded by team 2. Similarly, goals scored by team 2 will be the
         // number of goals conceded by team 1.
+        let team_1_scores = scores.remove(team_1_name).unwrap_or_default() + TeamScores{
+            goals_scored: team_1_score,
+            goals_conceded: team_2_score
+        };
+        scores.insert(team_1_name, team_1_scores);
+        let team_2_scores = scores.remove(team_2_name).unwrap_or_default() + TeamScores{
+            goals_scored: team_2_score,
+            goals_conceded: team_1_score
+        };
+        scores.insert(team_2_name, team_2_scores);
     }
 
     scores
