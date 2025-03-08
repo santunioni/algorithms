@@ -1,6 +1,6 @@
 DON'T EDIT THIS FILE!
 
-if1
+vecs2
 
 intro1
 intro2
@@ -15,3 +15,14 @@ functions2
 functions3
 functions4
 functions5
+if1
+if2
+if3
+quiz1
+primitive_types1
+primitive_types2
+primitive_types3
+primitive_types4
+primitive_types5
+primitive_types6
+vecs1
