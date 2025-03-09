@@ -1,6 +1,6 @@
 DON'T EDIT THIS FILE!
 
-from_str
+try_from_into
 
 intro1
 intro2
@@ -93,3 +93,4 @@ clippy2
 clippy3
 using_as
 from_into
+from_str
