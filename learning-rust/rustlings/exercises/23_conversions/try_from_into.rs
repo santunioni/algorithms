@@ -46,13 +46,7 @@ impl TryFrom<[i16; 3]> for Color {
 
     fn try_from(arr: [i16; 3]) -> Result<Self, Self::Error> {
         let [red, green, blue] = arr;
-
-        let (Ok(red), Ok(green), Ok(blue)) = (red.try_into(), green.try_into(), blue.try_into())
-        else {
-            return Err(IntoColorError::IntConversion);
-        };
-
-        Ok(Color { red, green, blue })
+        Color::try_from((red, green, blue))
     }
 }
 
@@ -62,17 +56,10 @@ impl TryFrom<&[i16]> for Color {
     type Error = IntoColorError;
 
     fn try_from(slice: &[i16]) -> Result<Self, Self::Error> {
-        let [red, green, blue] = slice else {
+        let [red, green, blue] = *slice else {
             return Err(IntoColorError::BadLen);
         };
-
-        let (Ok(red), Ok(green), Ok(blue)) =
-            ((*red).try_into(), (*green).try_into(), (*blue).try_into())
-        else {
-            return Err(IntoColorError::IntConversion);
-        };
-
-        Ok(Color { red, green, blue })
+        Color::try_from((red, green, blue))
     }
 }
 
