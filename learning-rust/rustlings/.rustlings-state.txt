@@ -95,3 +95,4 @@ using_as
 from_into
 from_str
 try_from_into
+as_ref_mut
