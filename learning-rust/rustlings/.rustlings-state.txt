@@ -1,6 +1,6 @@
 DON'T EDIT THIS FILE!
 
-try_from_into
+as_ref_mut
 
 intro1
 intro2
@@ -94,3 +94,4 @@ clippy3
 using_as
 from_into
 from_str
+try_from_into
