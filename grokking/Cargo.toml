@@ -1,13 +1,11 @@
-bin = [
-    { name = "selection_sort", path = "src/chapter2/selection_sort.rs" },
-]
-
 [package]
 name = "grokking"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+tailcall = "1.0.1"
 
 [dev-dependencies]
 bacon = "3.12.0"
+more-asserts = "0.3.1"
