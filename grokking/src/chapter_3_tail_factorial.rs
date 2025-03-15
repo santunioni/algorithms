@@ -15,9 +15,10 @@ pub fn factorial_with_tail(num: u128) -> u128 {
 
 pub fn factorial_without_tail(num: u128) -> u128 {
     if num <= 1 {
-        return num;
+        num
+    } else {
+        num * factorial_without_tail(num - 1)
     }
-    num * factorial_without_tail(num - 1)
 }
 
 #[cfg(test)]
