@@ -8,4 +8,10 @@ tailcall = "1.0.1"
 
 [dev-dependencies]
 bacon = "3.12.0"
-more-asserts = "0.3.1"
+criterion = "0.5.1"
+
+
+
+[[bench]]
+name = "chapter_3_tail_factorial"
+harness = false

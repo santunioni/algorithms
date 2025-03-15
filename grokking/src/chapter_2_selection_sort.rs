@@ -40,8 +40,6 @@ where
     transfer_ordered_values_to_new_vector!(vec)
 }
 
-fn main() {}
-
 #[cfg(test)]
 mod tests {
     use super::*;
