@@ -1,4 +1,4 @@
-fn quick_sorted<T>(mut vec: Vec<T>) -> Vec<T>
+fn quick_sorted<T>(vec: Vec<T>) -> Vec<T>
 where
     T: PartialOrd + Copy,
 {
@@ -7,20 +7,14 @@ where
     };
 
     let pivot_index = vec.len() / 2;
-    let pivot_value = vec[pivot_index].clone();
+    let pivot_value = vec[pivot_index];
 
-    let mut lesser_than_pivot = Vec::with_capacity(vec.len());
-    let mut greater_than_pivot = Vec::with_capacity(vec.len());
-
-    for (curr_idx, curr_value) in vec.drain(0..vec.len()).enumerate() {
-        if curr_idx == pivot_index {
-            continue;
-        } else if curr_value < pivot_value {
-            lesser_than_pivot.push(curr_value)
-        } else {
-            greater_than_pivot.push(curr_value)
-        }
-    }
+    let (mut lesser_than_pivot, greater_than_pivot): (Vec<T>, Vec<T>) = vec
+        .into_iter()
+        .enumerate()
+        .filter(|&(i, _)| i != pivot_index)
+        .map(|(_, v)| v)
+        .partition(|&v| v < pivot_value);
 
     lesser_than_pivot = quick_sorted(lesser_than_pivot);
     lesser_than_pivot.push(pivot_value);
