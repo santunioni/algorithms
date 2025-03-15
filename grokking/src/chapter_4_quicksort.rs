@@ -1,4 +1,4 @@
-fn split_at_pivot<T>(vec_to_split: Vec<T>) -> (Vec<T>, (usize, T), Vec<T>)
+fn split_at_pivot<T>(vec_to_split: Vec<T>) -> (Vec<T>, T, Vec<T>)
 where
     T: PartialOrd + Copy,
 {
@@ -12,11 +12,7 @@ where
         .map(|(_, v)| v)
         .partition(|&v| v < pivot_value);
 
-    (
-        lesser_than_pivot,
-        (pivot_index, pivot_value),
-        greater_than_pivot,
-    )
+    (lesser_than_pivot, pivot_value, greater_than_pivot)
 }
 
 fn quick_sorted<T>(vec: Vec<T>) -> Vec<T>
@@ -27,7 +23,7 @@ where
         return vec;
     };
 
-    let (lesser_than_pivot, (_, pivot_value), greater_than_pivot) = split_at_pivot(vec);
+    let (lesser_than_pivot, pivot_value, greater_than_pivot) = split_at_pivot(vec);
 
     quick_sorted(lesser_than_pivot)
         .into_iter()
