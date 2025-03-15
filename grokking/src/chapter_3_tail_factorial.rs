@@ -1,12 +1,8 @@
-use tailcall::tailcall;
-
-#[tailcall]
 fn inner_factorial_tail(num: u128, current: u128) -> u128 {
     if num <= 1 {
-        current
-    } else {
-        inner_factorial_tail(num - 1, num * current)
+        return current;
     }
+    inner_factorial_tail(num - 1, num * current)
 }
 
 pub fn factorial_with_tail(num: u128) -> u128 {
@@ -15,10 +11,9 @@ pub fn factorial_with_tail(num: u128) -> u128 {
 
 pub fn factorial_without_tail(num: u128) -> u128 {
     if num <= 1 {
-        num
-    } else {
-        num * factorial_without_tail(num - 1)
+        return num;
     }
+    num * factorial_without_tail(num - 1)
 }
 
 #[cfg(test)]
