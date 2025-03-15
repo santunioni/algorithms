@@ -1,6 +1,6 @@
 macro_rules! transfer_ordered_values_between_vectors {
-    ($copied_vec:ident, $new_vec:ident) => {
-        let mut $new_vec = Vec::with_capacity($copied_vec.capacity());
+    ($copied_vec:ident) => {
+        let mut ordered_vector = Vec::with_capacity($copied_vec.capacity());
         while !$copied_vec.is_empty() {
             let mut current_min_index = 0;
 
@@ -11,8 +11,9 @@ macro_rules! transfer_ordered_values_between_vectors {
             }
 
             let min_value = $copied_vec.remove(current_min_index);
-            $new_vec.push(min_value);
+            ordered_vector.push(min_value);
         }
+        ordered_vector
     };
 }
 
@@ -21,8 +22,8 @@ where
     T: PartialOrd + Copy,
 {
     let mut copied_vec: Vec<T> = vec.iter().map(|x| *x).collect();
-    transfer_ordered_values_between_vectors!(copied_vec, new_vec);
-    new_vec
+    let a = transfer_ordered_values_between_vectors!(copied_vec);
+    a
 }
 
 fn selection_sorted_ref<T>(vec: &Vec<T>) -> Vec<&T>
@@ -30,8 +31,8 @@ where
     T: PartialOrd,
 {
     let mut copied_vec: Vec<&T> = vec.iter().collect();
-    transfer_ordered_values_between_vectors!(copied_vec, new_vec);
-    new_vec
+    let a: Vec<&T> = transfer_ordered_values_between_vectors!(copied_vec);
+    a
 }
 
 fn main() {}
