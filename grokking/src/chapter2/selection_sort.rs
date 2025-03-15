@@ -17,7 +17,7 @@ macro_rules! transfer_ordered_values_to_new_vector {
     }};
 }
 
-fn selection_sorted_copied<T>(vec: &Vec<T>) -> Vec<T>
+fn copy_items_to_selection_sorted<T>(vec: &Vec<T>) -> Vec<T>
 where
     T: PartialOrd + Copy,
 {
@@ -25,12 +25,19 @@ where
     transfer_ordered_values_to_new_vector!(copied_vec)
 }
 
-fn selection_sorted_ref<T>(vec: &Vec<T>) -> Vec<&T>
+fn borrow_items_to_selection_sorted<T>(vec: &Vec<T>) -> Vec<&T>
 where
     T: PartialOrd,
 {
     let mut copied_vec: Vec<&T> = vec.iter().collect();
     transfer_ordered_values_to_new_vector!(copied_vec)
+}
+
+fn move_items_to_selection_sorted<T>(mut vec: Vec<T>) -> Vec<T>
+where
+    T: PartialOrd,
+{
+    transfer_ordered_values_to_new_vector!(vec)
 }
 
 fn main() {}
@@ -40,18 +47,39 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_sorts_integers() {
-        assert_eq!(selection_sorted_copied(&vec![2, 1, -30]), vec![-30, 1, 2]);
+    fn should_return_sorted_array_from_reference() {
+        assert_eq!(
+            copy_items_to_selection_sorted(&vec![2, 1, -30]),
+            vec![-30, 1, 2]
+        );
     }
 
     #[test]
-    fn it_sorts_boxes() {
+    fn should_return_sorted_array_taking_ownership() {
+        assert_eq!(
+            move_items_to_selection_sorted(vec![2, 1, -30]),
+            vec![-30, 1, 2]
+        );
+    }
+
+    #[test]
+    fn should_return_refs_to_sorted_values() {
         let unsorted_vec = vec![Box::new(2), Box::new(1), Box::new(-30)];
         let expected_sorted_vec = vec![Box::new(-30), Box::new(1), Box::new(2)];
-        let expected_sorted_vec_pointers: Vec<&Box<i32>> = expected_sorted_vec.iter().collect();
 
-        let sorted_vec: Vec<&Box<i32>> = selection_sorted_ref(&unsorted_vec).into_iter().collect();
+        assert_eq!(
+            borrow_items_to_selection_sorted(&unsorted_vec)
+                .into_iter()
+                .collect::<Vec<&Box<i32>>>(),
+            expected_sorted_vec.iter().collect::<Vec<&Box<i32>>>()
+        );
+    }
 
-        assert_eq!(sorted_vec, expected_sorted_vec_pointers);
+    #[test]
+    fn it_sorts_boxes_moved() {
+        assert_eq!(
+            move_items_to_selection_sorted(vec![Box::new(2), Box::new(1), Box::new(-30)]),
+            vec![Box::new(-30), Box::new(1), Box::new(2)]
+        );
     }
 }
