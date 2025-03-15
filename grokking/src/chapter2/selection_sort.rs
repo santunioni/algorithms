@@ -63,7 +63,7 @@ mod tests {
     }
 
     #[test]
-    fn should_return_refs_to_sorted_values() {
+    fn should_return_refs_to_owned_sorted_values() {
         let unsorted_vec = vec![Box::new(2), Box::new(1), Box::new(-30)];
         let expected_sorted_vec = vec![Box::new(-30), Box::new(1), Box::new(2)];
 
@@ -73,6 +73,25 @@ mod tests {
                 .collect::<Vec<&Box<i32>>>(),
             expected_sorted_vec.iter().collect::<Vec<&Box<i32>>>()
         );
+    }
+
+    #[test]
+    fn should_return_refs_to_unowned_sorted_values() {
+        let minus_thirty = Box::new(-30);
+        let one = Box::new(1);
+        let two = Box::new(2);
+
+        let actual_sorted: Vec<&Box<i32>> =
+            copy_items_to_selection_sorted(&vec![&two, &one, &minus_thirty]);
+
+        let expected = vec![&minus_thirty, &one, &two];
+        assert_eq!(actual_sorted, expected);
+
+        assert_eq!(format!("{:p}", &minus_thirty), format!("{:p}", expected[0]),); // Assert they refer to same object
+        assert_eq!(
+            format!("{:p}", &minus_thirty),
+            format!("{:p}", actual_sorted[0]),
+        ); // Assert they refer to same object
     }
 
     #[test]
