@@ -12,14 +12,20 @@
 // block to support alphabetical report cards in addition to numerical ones.
 
 // TODO: Adjust the struct as described above.
-struct ReportCard<T> where T: std::fmt::Display {
+struct ReportCard<T>
+where
+    T: std::fmt::Display,
+{
     grade: T,
     student_name: String,
     student_age: u8,
 }
 
 // TODO: Adjust the impl block as described above.
-impl <T> ReportCard<T> where T: std::fmt::Display{
+impl<T> ReportCard<T>
+where
+    T: std::fmt::Display,
+{
     fn print(&self) -> String {
         format!(
             "{} ({}) - achieved a grade of {}",

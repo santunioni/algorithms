@@ -12,7 +12,6 @@ impl AppendBar for Vec<String> {
     }
 }
 
-
 fn main() {
     // You can optionally experiment here.
 }

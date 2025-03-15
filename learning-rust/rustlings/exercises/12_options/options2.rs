@@ -31,7 +31,7 @@ mod tests {
         // in if-let and while-let statements.
         while let Some(Some(value)) = optional_integers.pop() {
             assert_eq!(value, cursor);
-            cursor -=1;
+            cursor -= 1;
         }
 
         assert_eq!(cursor, 0);

@@ -25,7 +25,7 @@ fn replace_me(input: &str) -> String {
             new_str.extend(&CARS[0..matching_index]);
             matching_index = 0;
             new_str.push(c);
-            continue
+            continue;
         }
 
         if matching_index == CARS.len() {

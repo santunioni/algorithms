@@ -5,7 +5,7 @@ struct Wrapper<T> {
 }
 
 // TODO: Adapt the struct's implementation to be generic over the wrapped value.
-impl <T> Wrapper<T> {
+impl<T> Wrapper<T> {
     fn new(value: T) -> Self {
         Wrapper { value }
     }
