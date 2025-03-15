@@ -195,12 +195,6 @@ edition = "2021"
 # Don't publish the exercises on crates.io!
 publish = false
 
-[profile.release]
-panic = "abort"
-
-[profile.dev]
-panic = "abort"
-
 [lints.rust]
 # You shouldn't write unsafe code in Rustlings!
 unsafe_code = "forbid"

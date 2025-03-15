@@ -14,9 +14,3 @@ harness = false
 
 [dev-dependencies]
 criterion = "0.5.1"
-
-[profile.dev]
-opt-level = 0 # The default for dev
-
-[profile.release]
-opt-level = 3 # The default for release

@@ -1,3 +1,11 @@
 [workspace]
 resolver = "2"
-members = ["learning-rust/http-server", "learning-rust/minigrep", "learning-rust/rustlings"]
+members = ["grokking", "learning-rust/http-server", "learning-rust/minigrep", "learning-rust/rustlings"]
+
+[profile.release]
+panic = "abort"
+opt-level = 3 # The default for release
+
+[profile.dev]
+panic = "abort"
+opt-level = 0 # The default for dev
