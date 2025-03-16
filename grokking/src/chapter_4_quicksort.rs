@@ -18,18 +18,20 @@ where
         return (&mut [], &mut []);
     }
 
-    let pivot_idx = length - 1;
+    let pivot_idx = length / 2;
     let pivot_raw_ptr = &raw mut slice[pivot_idx];
 
     let mut lower_idx = 0;
-    let mut higher_idx = pivot_idx - 1;
+    let mut higher_idx = length - 1;
 
     while lower_idx < higher_idx {
-        while unsafe { slice[lower_idx] < *pivot_raw_ptr } {
+        while unsafe { slice[lower_idx] < *pivot_raw_ptr } || lower_idx == pivot_idx {
             lower_idx += 1;
         }
 
-        while unsafe { slice[higher_idx] > *pivot_raw_ptr } && higher_idx > 0 {
+        while (unsafe { slice[higher_idx] > *pivot_raw_ptr } && higher_idx > 0)
+            || higher_idx == pivot_idx
+        {
             higher_idx -= 1;
         }
 
@@ -40,9 +42,17 @@ where
         slice.swap(lower_idx, higher_idx)
     }
 
-    slice.swap(lower_idx, pivot_idx);
+    let new_pivot_idx = if lower_idx < pivot_idx {
+        slice.swap(lower_idx, pivot_idx);
+        lower_idx
+    } else if higher_idx > pivot_idx {
+        slice.swap(higher_idx, pivot_idx);
+        higher_idx
+    } else {
+        pivot_idx
+    };
 
-    let (first_half, second_half) = slice.split_at_mut(lower_idx);
+    let (first_half, second_half) = slice.split_at_mut(new_pivot_idx);
     (first_half, &mut second_half[1..])
 }
 
@@ -101,9 +111,9 @@ mod tests {
 
     #[test]
     fn should_sort_big_array_in_place() {
-        let mut my_vec = (0..30000).rev().collect::<Vec<u32>>();
+        let mut my_vec = (0..3000000).rev().collect::<Vec<u32>>();
         quick_sorted_vec(&mut my_vec);
-        assert_eq!(my_vec, (0..30000).collect::<Vec<u32>>())
+        assert_eq!(my_vec, (0..3000000).collect::<Vec<u32>>())
     }
 
     #[test]
@@ -111,23 +121,25 @@ mod tests {
         let mut my_vec = vec![1, 51512, 7, 4, 23, 45, 7, 8];
         let (first_half, second_half) = partition_slice(&mut my_vec);
 
-        assert_eq!(first_half, [1, 7, 7, 4]);
-        assert_eq!(second_half, [45, 51512, 23]);
+        assert_eq!(first_half, [1, 8, 7, 4, 7]);
+        assert_eq!(second_half, [45, 51512]);
     }
 
     #[test]
     fn should_partition_slice_of_two_numbers() {
         let mut my_vec = vec![1, 2];
-        let result = partition_slice(&mut my_vec);
+        let (first_half, second_half) = partition_slice(&mut my_vec);
 
-        assert_eq!(result, (&mut [][..], &mut [][..]));
+        assert_eq!(first_half, []);
+        assert_eq!(second_half, []);
     }
 
     #[test]
     fn should_partition_slice_of_three_numbers() {
         let mut my_vec = vec![2, 1, 3];
-        let result = partition_slice(&mut my_vec);
+        let (first_half, second_half) = partition_slice(&mut my_vec);
 
-        assert_eq!(result, (&mut [2, 1][..], &mut [][..]));
+        assert_eq!(first_half, []);
+        assert_eq!(second_half, [2, 3]);
     }
 }
