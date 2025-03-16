@@ -8,4 +8,5 @@ opt-level = 3 # The default for release
 
 [profile.dev]
 panic = "abort"
-opt-level = 0 # The default for dev
+#opt-level = 0 # The default for dev
+opt-level = 3 # The default for dev
