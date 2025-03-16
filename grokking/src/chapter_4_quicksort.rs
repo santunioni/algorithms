@@ -51,10 +51,7 @@ where
     (first_half, &mut second_half[1..])
 }
 
-fn filter_slices_yet_to_sort<T>(slices_to_sort: Vec<&mut [T]>) -> Vec<&mut [T]>
-where
-    T: PartialOrd + Copy,
-{
+fn filter_slices_yet_to_sort<T: PartialOrd>(slices_to_sort: Vec<&mut [T]>) -> Vec<&mut [T]> {
     slices_to_sort
         .into_iter()
         // Could be easily parallelized for larger datasets, thanks to functional style.
@@ -69,10 +66,7 @@ where
         .collect()
 }
 
-fn quick_sorted_loop<T>(mut slices_to_sort: Vec<&mut [T]>)
-where
-    T: PartialOrd + Copy,
-{
+fn quick_sorted_loop<T: PartialOrd>(mut slices_to_sort: Vec<&mut [T]>) {
     loop {
         slices_to_sort = filter_slices_yet_to_sort(slices_to_sort);
         if slices_to_sort.len() == 0 {
@@ -90,10 +84,7 @@ where
 /// This is stack overflowing with large values because Rust Compiler doesn't implement
 /// tail calls optimization. Happyly, transforming to loop is easy after I figure out
 /// how to implement as tail call.
-fn quick_sorted_tailed<T>(mut slices_yet_to_sort: Vec<&mut [T]>)
-where
-    T: PartialOrd + Copy,
-{
+fn quick_sorted_tailed<T: PartialOrd>(mut slices_yet_to_sort: Vec<&mut [T]>) {
     slices_yet_to_sort = filter_slices_yet_to_sort(slices_yet_to_sort);
     if slices_yet_to_sort.len() == 0 {
         return;
@@ -101,10 +92,7 @@ where
     quick_sorted_tailed(slices_yet_to_sort);
 }
 
-fn quick_sorted_vec<T>(vec: &mut Vec<T>)
-where
-    T: PartialOrd + Copy,
-{
+fn quick_sorted_vec<T: PartialOrd>(vec: &mut Vec<T>) {
     quick_sorted_loop(vec![vec.as_mut_slice()])
 }
 
