@@ -11,16 +11,11 @@ where
 {
     let length = slice.len();
 
-    if length <= 2 {
-        return if length == 2 {
-            if slice[0] > slice[1] {
-                slice.swap(0, 1)
-            }
-            let (first_half, second_half) = slice.split_at_mut(1);
-            (first_half, &mut second_half[1..])
-        } else {
-            (slice, &mut [])
-        };
+    if length < 3 {
+        if length == 2 && slice[0] > slice[1] {
+            slice.swap(0, 1)
+        }
+        return (&mut [], &mut []);
     }
 
     let pivot_idx = length - 1;
@@ -128,7 +123,7 @@ mod tests {
         let mut my_vec = vec![1, 2];
         let result = partition_array(&mut my_vec);
 
-        assert_eq!(result, (&mut [1][..], &mut [][..]));
+        assert_eq!(result, (&mut [][..], &mut [][..]));
     }
 
     #[test]
