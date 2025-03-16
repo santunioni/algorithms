@@ -45,20 +45,17 @@ where
         slice.swap(lower_idx, higher_idx)
     }
 
-    let new_pivot_idx = lower_idx;
-    slice.swap(new_pivot_idx, pivot_idx);
+    slice.swap(lower_idx, pivot_idx);
 
-    let (first_half, second_half) = slice.split_at_mut(new_pivot_idx);
+    let (first_half, second_half) = slice.split_at_mut(lower_idx);
     (first_half, &mut second_half[1..])
 }
 
-/// A tail recursive version of quicksort, subject to compiler optimization.
-/// It will carry an array of yet unsorted slices to further calls to itself.
-fn quick_sorted_tailed<T>(slices_to_sort: Vec<&mut [T]>)
+fn filter_slices_yet_to_sort<T>(slices_to_sort: Vec<&mut [T]>) -> Vec<&mut [T]>
 where
     T: PartialOrd + Copy,
 {
-    let slices_yet_to_sort: Vec<&mut [T]> = slices_to_sort
+    slices_to_sort
         .into_iter()
         // Could be easily parallelized for larger datasets, thanks to functional style.
         // But for smaller datasets, the overhead of context switching between threads
@@ -69,8 +66,30 @@ where
         })
         .filter(|slice| slice.len() >= 2)
         // Slice with 2 or more items need sorting
-        .collect();
+        .collect()
+}
 
+fn quick_sorted_loop<T>(mut slices_to_sort: Vec<&mut [T]>)
+where
+    T: PartialOrd + Copy,
+{
+    loop {
+        slices_to_sort = filter_slices_yet_to_sort(slices_to_sort);
+        if slices_to_sort.len() == 0 {
+            break;
+        }
+    }
+}
+
+/// A tail recursive version of quicksort, subject to compiler optimization.
+/// It will carry an array of yet unsorted slices to further calls to itself.
+/// A tail recursive version of quicksort, subject to compiler optimization.
+/// It will carry an array of yet unsorted slices to further calls to itself.
+fn quick_sorted_tailed<T>(mut slices_yet_to_sort: Vec<&mut [T]>)
+where
+    T: PartialOrd + Copy,
+{
+    slices_yet_to_sort = filter_slices_yet_to_sort(slices_yet_to_sort);
     if slices_yet_to_sort.len() == 0 {
         return;
     }
@@ -98,9 +117,9 @@ mod tests {
 
     #[test]
     fn should_sort_big_array_in_place() {
-        let mut my_vec: Vec<u32> = (0..3000).rev().collect();
+        let mut my_vec: Box<Vec<u32>> = Box::new((0..30000).rev().collect::<Vec<u32>>());
         quick_sorted_vec(&mut my_vec);
-        assert_eq!(my_vec, (0..3000).collect::<Vec<u32>>())
+        assert_eq!(*my_vec, (0..30000).collect::<Vec<u32>>())
     }
 
     #[test]
