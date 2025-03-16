@@ -5,13 +5,13 @@
 /// # Returns
 /// A tuple of two arrays. It is guaranteed the all items in first array are lesser
 /// than all items in second array.
-fn partition_array<T>(slice: &mut [T]) -> (&mut [T], &mut [T])
+fn partition_slice<T>(slice: &mut [T]) -> (&mut [T], &mut [T])
 where
     T: PartialOrd,
 {
     let length = slice.len();
 
-    if length < 3 {
+    if length <= 2 {
         if length == 2 && slice[0] > slice[1] {
             slice.swap(0, 1)
         }
@@ -53,11 +53,11 @@ fn filter_slices_yet_to_sort<T: PartialOrd>(slices_to_sort: Vec<&mut [T]>) -> Ve
         // But for smaller datasets, the overhead of context switching between threads
         // isn't compensated by parallelism in computation.
         .flat_map(|slice| {
-            let (lesser_half, greater_half) = partition_array(slice);
+            let (lesser_half, greater_half) = partition_slice(slice);
             vec![lesser_half, greater_half]
         })
+        // Only slices with 2 or more items need partitioning
         .filter(|slice| slice.len() >= 2)
-        // Slice with 2 or more items need sorting
         .collect()
 }
 
@@ -109,7 +109,7 @@ mod tests {
     #[test]
     fn should_partition_removing_pivot() {
         let mut my_vec = vec![1, 51512, 7, 4, 23, 45, 7, 8];
-        let (first_half, second_half) = partition_array(&mut my_vec);
+        let (first_half, second_half) = partition_slice(&mut my_vec);
 
         assert_eq!(first_half, [1, 7, 7, 4]);
         assert_eq!(second_half, [45, 51512, 23]);
@@ -118,7 +118,7 @@ mod tests {
     #[test]
     fn should_partition_slice_of_two_numbers() {
         let mut my_vec = vec![1, 2];
-        let result = partition_array(&mut my_vec);
+        let result = partition_slice(&mut my_vec);
 
         assert_eq!(result, (&mut [][..], &mut [][..]));
     }
@@ -126,7 +126,7 @@ mod tests {
     #[test]
     fn should_partition_slice_of_three_numbers() {
         let mut my_vec = vec![2, 1, 3];
-        let result = partition_array(&mut my_vec);
+        let result = partition_slice(&mut my_vec);
 
         assert_eq!(result, (&mut [2, 1][..], &mut [][..]));
     }
