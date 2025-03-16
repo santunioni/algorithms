@@ -39,39 +39,42 @@ where
     (first_half, &mut second_half[1..])
 }
 
-// fn quick_sorted_tailed<T>(mut array_of_slices: Vec<&mut [T]>)
-// where
-//     T: PartialOrd + Copy,
-// {
-//     let (array_of_slices, should_call_again) = array_of_slices
-//         .into_iter()
-//         .fold(
-//             (Vec::new(), false),
-//             |(array_of_slices, should_call_again), slice| {
-//
-//                 if slice.len() < 2 {
-//                     array_of_slices;
-//                 };
-//             }
-//         )
-//         .map(|slice| {
-//             let (first_half, second_half) = partition_array(slice.as_mut());
-//         })
-//         .collect()
-// }
+fn quick_sorted_tailed<T>(array_of_slices: Vec<&mut [T]>)
+where
+    T: PartialOrd + Copy,
+{
+    let length = array_of_slices.len();
+    if length == 0 {
+        return;
+    }
+
+    let array_of_slices = array_of_slices.into_iter().fold(
+        Vec::with_capacity(length),
+        |mut array_of_slices, slice| {
+            if slice.len() == 1 {
+                array_of_slices.push(slice);
+            } else if slice.len() > 1 {
+                let (first_half, second_half) = partition_array(slice.as_mut());
+                if first_half.len() >= 2 {
+                    array_of_slices.push(first_half);
+                }
+                if second_half.len() >= 2 {
+                    array_of_slices.push(second_half);
+                }
+            }
+
+            array_of_slices
+        },
+    );
+
+    quick_sorted_tailed(array_of_slices)
+}
 
 fn quick_sorted_slice<T>(slice: &mut [T])
 where
     T: PartialOrd + Copy,
 {
-    if slice.len() < 2 {
-        return;
-    };
-
-    let (first_half, second_half) = partition_array(slice.as_mut());
-
-    quick_sorted_slice(first_half);
-    quick_sorted_slice(second_half);
+    quick_sorted_tailed(vec![slice])
 }
 
 fn quick_sorted_vec<T>(vec: &mut Vec<T>)
