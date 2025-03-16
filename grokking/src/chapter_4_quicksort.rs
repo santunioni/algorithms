@@ -85,6 +85,11 @@ where
 /// It will carry an array of yet unsorted slices to further calls to itself.
 /// A tail recursive version of quicksort, subject to compiler optimization.
 /// It will carry an array of yet unsorted slices to further calls to itself.
+///
+/// # Panics
+/// This is stack overflowing with large values because Rust Compiler doesn't implement
+/// tail calls optimization. Happyly, transforming to loop is easy after I figure out
+/// how to implement as tail call.
 fn quick_sorted_tailed<T>(mut slices_yet_to_sort: Vec<&mut [T]>)
 where
     T: PartialOrd + Copy,
@@ -93,15 +98,14 @@ where
     if slices_yet_to_sort.len() == 0 {
         return;
     }
-
-    quick_sorted_tailed(slices_yet_to_sort)
+    quick_sorted_tailed(slices_yet_to_sort);
 }
 
 fn quick_sorted_vec<T>(vec: &mut Vec<T>)
 where
     T: PartialOrd + Copy,
 {
-    quick_sorted_tailed(vec![vec.as_mut_slice()])
+    quick_sorted_loop(vec![vec.as_mut_slice()])
 }
 
 #[cfg(test)]
@@ -117,9 +121,9 @@ mod tests {
 
     #[test]
     fn should_sort_big_array_in_place() {
-        let mut my_vec: Box<Vec<u32>> = Box::new((0..30000).rev().collect::<Vec<u32>>());
+        let mut my_vec = (0..30000).rev().collect::<Vec<u32>>();
         quick_sorted_vec(&mut my_vec);
-        assert_eq!(*my_vec, (0..30000).collect::<Vec<u32>>())
+        assert_eq!(my_vec, (0..30000).collect::<Vec<u32>>())
     }
 
     #[test]
