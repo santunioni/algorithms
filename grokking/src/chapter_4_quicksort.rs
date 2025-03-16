@@ -7,7 +7,7 @@
 /// than all items in second array.
 fn partition_array<T>(slice: &mut [T]) -> (&mut [T], &mut [T])
 where
-    T: PartialOrd + Copy,
+    T: PartialOrd,
 {
     let length = slice.len();
 
@@ -24,17 +24,17 @@ where
     }
 
     let pivot_idx = length - 1;
-    let pivot_value = slice[pivot_idx];
+    let pivot_raw_ptr = &raw mut slice[pivot_idx];
 
     let mut lower_idx = 0;
     let mut higher_idx = pivot_idx - 1;
 
     while lower_idx < higher_idx {
-        while slice[lower_idx] < pivot_value {
+        while unsafe { slice[lower_idx] < *pivot_raw_ptr } {
             lower_idx += 1;
         }
 
-        while slice[higher_idx] > pivot_value && higher_idx > 0 {
+        while unsafe { slice[higher_idx] > *pivot_raw_ptr } && higher_idx > 0 {
             higher_idx -= 1;
         }
 
