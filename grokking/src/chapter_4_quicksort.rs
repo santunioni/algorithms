@@ -62,11 +62,8 @@ fn filter_slices_yet_to_sort<T: PartialOrd>(slices_to_sort: Vec<&mut [T]>) -> Ve
 }
 
 fn quick_sorted_loop<T: PartialOrd>(mut slices_to_sort: Vec<&mut [T]>) {
-    loop {
+    while slices_to_sort.len() > 0 {
         slices_to_sort = filter_slices_yet_to_sort(slices_to_sort);
-        if slices_to_sort.len() == 0 {
-            break;
-        }
     }
 }
 
