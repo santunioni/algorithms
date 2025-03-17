@@ -43,7 +43,7 @@ fn split_vector<T>(mut vec: Vec<T>) -> (Vec<T>, Vec<T>) {
     (first_half, second_half)
 }
 
-fn merged_sorted_vec<T: PartialOrd>(mut vec: Vec<T>) -> Vec<T> {
+fn merged_sorted_vec<T: PartialOrd>(vec: Vec<T>) -> Vec<T> {
     if vec.len() == 1 {
         return vec;
     }
