@@ -48,10 +48,12 @@ fn merged_sorted_vec<T: PartialOrd>(vec: Vec<T>) -> Vec<T> {
         return vec;
     }
 
-    let (mut first_half, mut second_half) = split_vector(vec);
-    first_half = merged_sorted_vec(first_half);
-    second_half = merged_sorted_vec(second_half);
-    merge_vectors(first_half, second_half)
+    let (first_half, second_half) = split_vector(vec);
+
+    merge_vectors(
+        merged_sorted_vec(first_half),
+        merged_sorted_vec(second_half),
+    )
 }
 
 #[cfg(test)]
