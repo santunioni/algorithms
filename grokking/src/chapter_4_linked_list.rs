@@ -24,16 +24,17 @@ impl<T> LinkedList<T> {
     }
 
     fn pop_first(&mut self) -> Option<T> {
-        match self.first.take() {
-            None => None,
-            Some(mut old_first) => {
-                self.first = match old_first.next.take() {
-                    None => None,
-                    Some(old_second) => Some(*old_second),
-                };
-                Some(old_first.item)
-            }
+        let mut first = self.first.take()?;
+        if let Some(second) = first.next.take() {
+            self.first = Some(*second);
         }
+        Some(first.item)
+    }
+
+    fn add_last(&mut self, new_last: T) {}
+
+    fn pop_last(&mut self) -> Option<T> {
+        None
     }
 }
 
@@ -42,13 +43,46 @@ mod tests {
     use crate::chapter_4_linked_list::LinkedList;
 
     #[test]
-    fn should_add_first_item() {
+    fn should_add_first_and_pop_first() {
         let mut list = LinkedList::empty();
 
-        list.add_first(1);
         list.add_first(2);
+        list.add_first(1);
 
-        assert_eq!(list.pop_first().unwrap(), 2);
-        assert_eq!(list.pop_first().unwrap(), 1)
+        assert_eq!(list.pop_first().unwrap(), 1);
+        assert_eq!(list.pop_first().unwrap(), 2)
+    }
+
+    #[test]
+    fn should_add_first_and_pop_last() {
+        let mut list = LinkedList::empty();
+
+        list.add_first(2);
+        list.add_first(1);
+
+        assert_eq!(list.pop_last().unwrap(), 2);
+        assert_eq!(list.pop_last().unwrap(), 1)
+    }
+
+    #[test]
+    fn should_add_last_and_pop_first() {
+        let mut list = LinkedList::empty();
+
+        list.add_last(1);
+        list.add_last(2);
+
+        assert_eq!(list.pop_first().unwrap(), 1);
+        assert_eq!(list.pop_first().unwrap(), 2)
+    }
+
+    #[test]
+    fn should_add_last_and_pop_last() {
+        let mut list = LinkedList::empty();
+
+        list.add_last(1);
+        list.add_last(2);
+
+        assert_eq!(list.pop_last().unwrap(), 2);
+        assert_eq!(list.pop_last().unwrap(), 1)
     }
 }
