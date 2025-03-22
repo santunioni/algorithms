@@ -21,11 +21,43 @@ pub struct LinkedList<T> {
     last: Option<LinkedItemRef<T>>,
 }
 
-impl<T> Iterator for LinkedList<T> {
+pub struct Drain<T>(LinkedList<T>);
+
+impl<T> Drain<T> {
+    fn new(list: LinkedList<T>) -> Self {
+        Drain(list)
+    }
+
+    fn rev(self) -> DrainRev<T> {
+        DrainRev::new(self.0)
+    }
+}
+
+impl<T> Iterator for Drain<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.pop_first()
+        self.0.pop_first()
+    }
+}
+
+pub struct DrainRev<T>(LinkedList<T>);
+
+impl<T> DrainRev<T> {
+    fn new(list: LinkedList<T>) -> Self {
+        DrainRev(list)
+    }
+
+    fn rev(self) -> Drain<T> {
+        Drain::new(self.0)
+    }
+}
+
+impl<T> Iterator for DrainRev<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.pop_last()
     }
 }
 
@@ -36,6 +68,10 @@ impl<T> LinkedList<T> {
             first: None,
             last: None,
         }
+    }
+
+    pub fn drain(self) -> Drain<T> {
+        Drain::new(self)
     }
 
     pub fn add_first(&mut self, new_first: T) {
@@ -200,16 +236,30 @@ mod tests {
     }
 
     #[test]
-    fn should_iterate() {
+    fn should_drain() {
         let mut list = LinkedList::empty();
 
         list.add_last(1);
         list.add_last(2);
 
-        let mut iter = list.into_iter();
+        let mut iter = list.drain();
 
         assert_eq!(iter.next().unwrap(), 1);
         assert_eq!(iter.next().unwrap(), 2);
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn should_drain_rev() {
+        let mut list = LinkedList::empty();
+
+        list.add_last(1);
+        list.add_last(2);
+
+        let mut iter = list.drain().rev();
+
+        assert_eq!(iter.next().unwrap(), 2);
+        assert_eq!(iter.next().unwrap(), 1);
         assert_eq!(iter.next(), None);
     }
 }
