@@ -1,29 +1,23 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-struct LinkedItem<T> {
+struct Cell<T> {
     item: Option<T>,
-    prev: Option<LinkedItemRef<T>>,
-    next: Option<LinkedItemRef<T>>,
+    prev: Option<CellRef<T>>,
+    next: Option<CellRef<T>>,
 }
 
-type LinkedItemRef<T> = Rc<RefCell<LinkedItem<T>>>;
+type CellRef<T> = Rc<RefCell<Cell<T>>>;
 
-impl<T> Into<LinkedItemRef<T>> for LinkedItem<T> {
-    fn into(self) -> LinkedItemRef<T> {
+impl<T> Into<CellRef<T>> for Cell<T> {
+    fn into(self) -> CellRef<T> {
         Rc::new(RefCell::new(self))
     }
 }
 
-impl<T> LinkedItem<T> {
-    fn pop(
-        &mut self,
-    ) -> (
-        Option<LinkedItemRef<T>>,
-        Option<T>,
-        Option<LinkedItemRef<T>>,
-    ) {
-        let LinkedItem { item, prev, next } = self;
+impl<T> Cell<T> {
+    fn pop(&mut self) -> (Option<CellRef<T>>, Option<T>, Option<CellRef<T>>) {
+        let Cell { item, prev, next } = self;
 
         match (&prev, &next) {
             (Some(prev), Some(next)) => {
@@ -37,12 +31,24 @@ impl<T> LinkedItem<T> {
 
         (prev.take(), item.take(), next.take())
     }
+
+    fn prepend(mut self, item: T) {
+        let old_prev = self.prev.take();
+        let self_ref = self.into();
+        let new_cell = Cell {
+            item: Some(item),
+            next: Some(Rc::clone(&self_ref)),
+            prev: old_prev,
+        };
+
+        self_ref.borrow_mut().prev = Some(new_cell.into());
+    }
 }
 
 pub struct LinkedList<T> {
     len: u64,
-    first: Option<LinkedItemRef<T>>,
-    last: Option<LinkedItemRef<T>>,
+    first: Option<CellRef<T>>,
+    last: Option<CellRef<T>>,
 }
 
 pub struct Drain<T>(LinkedList<T>);
@@ -101,7 +107,7 @@ impl<T> LinkedList<T> {
     pub fn add_first(&mut self, new_first: T) {
         let old_first_now_second = self.first.take();
 
-        let new_first = LinkedItem {
+        let new_first = Cell {
             item: Some(new_first),
             next: match &old_first_now_second {
                 None => None,
@@ -132,7 +138,7 @@ impl<T> LinkedList<T> {
     pub fn add_last(&mut self, new_last: T) {
         let old_last = self.last.take();
 
-        let new_last = LinkedItem {
+        let new_last = Cell {
             item: Some(new_last),
             next: None,
             prev: match &old_last {
