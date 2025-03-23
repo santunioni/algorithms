@@ -16,7 +16,13 @@ impl<T> Into<LinkedItemRef<T>> for LinkedItem<T> {
 }
 
 impl<T> LinkedItem<T> {
-    fn pop(self) -> LinkedItem<T> {
+    fn pop(
+        &mut self,
+    ) -> (
+        Option<LinkedItemRef<T>>,
+        Option<T>,
+        Option<LinkedItemRef<T>>,
+    ) {
         let LinkedItem { item, prev, next } = self;
 
         match (&prev, &next) {
@@ -29,7 +35,7 @@ impl<T> LinkedItem<T> {
             (None, None) => {}
         }
 
-        LinkedItem { item, prev, next }
+        (prev.take(), item.take(), next.take())
     }
 }
 
@@ -117,14 +123,10 @@ impl<T> LinkedList<T> {
 
     pub fn pop_first(&mut self) -> Option<T> {
         let first = self.first.take()?;
-        let mut first = first.borrow_mut();
-        if let Some(second) = first.next.take() {
-            second.borrow_mut().prev = None;
-            self.first = Some(second);
-        }
-
+        let (_, item, next) = first.borrow_mut().pop();
+        self.first = next;
         self.len -= 1;
-        Some(first.item.take()?)
+        item
     }
 
     pub fn add_last(&mut self, new_last: T) {
@@ -152,14 +154,10 @@ impl<T> LinkedList<T> {
 
     pub fn pop_last(&mut self) -> Option<T> {
         let last = self.last.take()?;
-        let mut last = last.borrow_mut();
-        if let Some(before) = last.prev.take() {
-            before.borrow_mut().next = None;
-            self.last = Some(before);
-        }
-
+        let (prev, item, _) = last.borrow_mut().pop();
+        self.last = prev;
         self.len -= 1;
-        Some(last.item.take()?)
+        item
     }
 
     pub fn len(&self) -> u64 {
