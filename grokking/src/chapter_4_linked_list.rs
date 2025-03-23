@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::rc::{Rc, Weak};
 
 struct Node<T> {
@@ -23,6 +23,10 @@ impl<T> Node<T> {
             prev: None,
             next: None,
         }
+    }
+
+    fn item(&self) -> &T {
+        &self.item.as_ref().unwrap()
     }
 
     fn pop(&mut self) -> (Option<NodeWeakRef<T>>, Option<T>, Option<NodeStrongRef<T>>) {
@@ -94,6 +98,36 @@ impl<T> Drain<T> {
     }
 }
 
+pub struct LinkedListIterator<'a, T> {
+    curr: Option<Ref<'a, Node<T>>>,
+    next: Option<Ref<'a, Node<T>>>,
+}
+
+impl<'a, T> LinkedListIterator<'a, T> {
+    fn new(list: &LinkedList<T>) -> LinkedListIterator<T> {
+        LinkedListIterator {
+            curr: None,
+            next: list.get_first(),
+        }
+    }
+}
+
+impl<'a, T> Iterator for LinkedListIterator<'a, T> {
+    type Item = Ref<'a, T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.curr = self.next.take();
+        if let Some(curr) = self.curr.take() {
+            if let Some(next) = &self.next {
+                self.next = Some(Ref::clone(next));
+            }
+            Some(Ref::map(curr, |node| node.item.as_ref().unwrap()))
+        } else {
+            None
+        }
+    }
+}
+
 impl<T> Iterator for Drain<T> {
     type Item = T;
 
@@ -109,6 +143,10 @@ impl<T> LinkedList<T> {
             first: None,
             last: None,
         }
+    }
+
+    fn get_first(&self) -> Option<Ref<Node<T>>> {
+        self.first.as_ref().map(|first| first.borrow())
     }
 
     pub fn new(item: T) -> LinkedList<T> {
