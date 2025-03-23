@@ -8,42 +8,44 @@ pub struct Matrix {
 }
 
 #[derive(Clone, Debug)]
-pub struct MatrixRef<'a> {
+struct SubMatrix<'a> {
     rows: usize,
     cols: usize,
     data: &'a [usize],
 }
 
-impl<'a> MatrixRef<'a> {
-    pub fn materialize(&self) -> Matrix {
+impl<'a> From<&'a SubMatrix<'a>> for Matrix {
+    fn from(value: &'a SubMatrix<'a>) -> Self {
         Matrix {
-            rows: self.rows,
-            cols: self.cols,
-            data: self.data.into(),
+            rows: value.rows,
+            cols: value.cols,
+            data: value.data.into(),
+        }
+    }
+}
+
+impl<'a> From<&'a Matrix> for SubMatrix<'a> {
+    fn from(value: &'a Matrix) -> Self {
+        SubMatrix {
+            rows: value.rows,
+            cols: value.cols,
+            data: &value.data,
         }
     }
 }
 
 type MatrixIndex = (usize, usize);
 
-impl Matrix {
-    fn convert_matrix_index_to_vec_index(&self, matrix_index: MatrixIndex) -> usize {
-        matrix_index.1 + matrix_index.0 * self.cols
-    }
+fn convert_matrix_index_to_vec_index(cols: usize, matrix_index: MatrixIndex) -> usize {
+    matrix_index.1 + matrix_index.0 * cols
+}
 
+impl Matrix {
     pub fn zeroes(rows: usize, cols: usize) -> Self {
         Matrix {
             rows,
             cols,
             data: vec![0; rows * cols],
-        }
-    }
-
-    pub fn get_reference(&self) -> MatrixRef {
-        MatrixRef {
-            rows: self.rows,
-            cols: self.cols,
-            data: &self.data,
         }
     }
 
@@ -54,8 +56,71 @@ impl Matrix {
         }
         identity
     }
+}
 
-    fn multiply_baseline(&self, other: &Matrix) -> Result<Matrix, &'static str> {
+impl<'a> Index<MatrixIndex> for SubMatrix<'a> {
+    type Output = usize;
+
+    fn index(&self, index: MatrixIndex) -> &Self::Output {
+        let vec_index = convert_matrix_index_to_vec_index(self.cols, index);
+        &self.data[vec_index]
+    }
+}
+
+impl Index<MatrixIndex> for Matrix {
+    type Output = usize;
+
+    fn index(&self, index: MatrixIndex) -> &Self::Output {
+        let vec_index = convert_matrix_index_to_vec_index(self.cols, index);
+        &self.data[vec_index]
+    }
+}
+
+impl IndexMut<MatrixIndex> for Matrix {
+    fn index_mut(&mut self, index: MatrixIndex) -> &mut Self::Output {
+        let vec_index = convert_matrix_index_to_vec_index(self.cols, index);
+        &mut self.data[vec_index]
+    }
+}
+
+type MatrixOperationResult = Result<Matrix, &'static str>;
+
+impl<'a> Sub<Self> for &SubMatrix<'a> {
+    type Output = MatrixOperationResult;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        if self.rows != rhs.rows || self.cols != rhs.cols {
+            return Err("Matrices dimensions do not match");
+        }
+        let mut result = Matrix::from(self);
+        for i in 0..self.rows {
+            for j in 0..self.cols {
+                result[(i, j)] -= rhs[(i, j)];
+            }
+        }
+        Ok(result)
+    }
+}
+
+impl<'a> Add<Self> for &SubMatrix<'a> {
+    type Output = MatrixOperationResult;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        if self.rows != rhs.rows || self.cols != rhs.cols {
+            return Err("Matrices dimensions do not match");
+        }
+        let mut result = Matrix::from(self);
+        for i in 0..self.rows {
+            for j in 0..self.cols {
+                result[(i, j)] += rhs[(i, j)];
+            }
+        }
+        Ok(result)
+    }
+}
+
+impl<'a> SubMatrix<'a> {
+    fn multiply_baseline(&self, other: &SubMatrix) -> MatrixOperationResult {
         if self.cols != other.rows {
             return Err("Matrices dimensions do not match for multiplication");
         }
@@ -71,62 +136,10 @@ impl Matrix {
 
         Ok(result)
     }
-
-    // fn strassen_split(&self, rhs: &Matrix) -> [Matrix; 8] {}
 }
 
-impl Index<MatrixIndex> for Matrix {
-    type Output = usize;
-
-    fn index(&self, index: MatrixIndex) -> &Self::Output {
-        let vec_index = self.convert_matrix_index_to_vec_index(index);
-        &self.data[vec_index]
-    }
-}
-
-impl IndexMut<MatrixIndex> for Matrix {
-    fn index_mut(&mut self, index: MatrixIndex) -> &mut Self::Output {
-        let vec_index = self.convert_matrix_index_to_vec_index(index);
-        &mut self.data[vec_index]
-    }
-}
-
-impl Sub<Self> for &Matrix {
-    type Output = Result<Matrix, &'static str>;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        if self.rows != rhs.rows || self.cols != rhs.cols {
-            return Err("Matrices dimensions do not match");
-        }
-        let mut result = self.clone();
-        for i in 0..self.rows {
-            for j in 0..self.cols {
-                result[(i, j)] -= rhs[(i, j)];
-            }
-        }
-        Ok(result)
-    }
-}
-
-impl Add<Self> for &Matrix {
-    type Output = Result<Matrix, &'static str>;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        if self.rows != rhs.rows || self.cols != rhs.cols {
-            return Err("Matrices dimensions do not match");
-        }
-        let mut result = self.clone();
-        for i in 0..self.rows {
-            for j in 0..self.cols {
-                result[(i, j)] += rhs[(i, j)];
-            }
-        }
-        Ok(result)
-    }
-}
-
-impl Mul<Self> for &Matrix {
-    type Output = Result<Matrix, &'static str>;
+impl<'a> Mul<Self> for &SubMatrix<'a> {
+    type Output = MatrixOperationResult;
 
     fn mul(self, rhs: Self) -> Self::Output {
         if self.cols != rhs.rows {
@@ -137,7 +150,7 @@ impl Mul<Self> for &Matrix {
             (self_rows, self_cols, other_cols)
                 if self_rows <= 2 || self_cols <= 2 || other_cols <= 2 =>
             {
-                self.multiply_baseline(rhs)
+                self.multiply_baseline(&rhs)
             }
             (_self_rows, _self_cols, _other_cols) => {
                 // //! Matrix names are defined in the picture
@@ -146,9 +159,33 @@ impl Mul<Self> for &Matrix {
                 // // let p_1 =
                 //
                 // // Change to Strassen
-                self.multiply_baseline(rhs)
+                self.multiply_baseline(&rhs)
             }
         }
+    }
+}
+
+impl Add<Self> for &Matrix {
+    type Output = MatrixOperationResult;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        &SubMatrix::from(self) + &SubMatrix::from(rhs)
+    }
+}
+
+impl Sub<Self> for &Matrix {
+    type Output = MatrixOperationResult;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        &SubMatrix::from(self) - &SubMatrix::from(rhs)
+    }
+}
+
+impl Mul<Self> for &Matrix {
+    type Output = MatrixOperationResult;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        &SubMatrix::from(self) * &SubMatrix::from(rhs)
     }
 }
 

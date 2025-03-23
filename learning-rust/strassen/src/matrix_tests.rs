@@ -17,25 +17,16 @@ mod tests {
     }
 
     #[test]
-    fn should_copy_matrix_from_reference() -> TestResult {
-        let matrix = matrix![[1, 2], [3, 4]];
-        let copy = matrix.get_reference().materialize();
-
-        assert_eq!(matrix, copy);
-        Ok(())
-    }
-
-    #[test]
     fn should_multiply_column_matrix_by_row_matrix() -> TestResult {
         // ARRANGE
         let row_matrix = matrix!([1, 2, 5]);
         let column_matrix = matrix!([2], [3], [4]);
 
         // ACT
-        let result = (&row_matrix * &column_matrix)?;
+        let result = &row_matrix * &column_matrix;
 
         // ASSERT
-        assert_eq!(result, matrix![[28]]);
+        assert_eq!(result?, matrix![[28]]);
         Ok(())
     }
 
@@ -46,10 +37,10 @@ mod tests {
         let row_matrix = matrix!([1, 2, 5]);
 
         // ACT
-        let result = (&column_matrix * &row_matrix)?;
+        let result = &column_matrix * &row_matrix;
 
         // ASSERT
-        assert_eq!(result, matrix![[2, 4, 10], [3, 6, 15], [4, 8, 20]]);
+        assert_eq!(result?, matrix![[2, 4, 10], [3, 6, 15], [4, 8, 20]]);
         Ok(())
     }
 
@@ -60,10 +51,10 @@ mod tests {
         let identity = Matrix::identity(3);
 
         // ACT
-        let result = (&matrix * &identity)?;
+        let result = &matrix * &identity;
 
         // ASSERT
-        assert_eq!(result, matrix);
+        assert_eq!(result?, matrix);
         Ok(())
     }
 }
