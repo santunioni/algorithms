@@ -51,7 +51,7 @@ impl<T> Cell<T> {
         )
     }
 
-    fn append(self_ref: CellStrongRef<T>, item: T) -> CellStrongRef<T> {
+    fn append(self_ref: CellStrongRef<T>, item: T) -> CellWeakRef<T> {
         let mut self_ref_mut = self_ref.borrow_mut();
         let old_next = self_ref_mut.next.take();
         let new_cell = Cell {
@@ -61,7 +61,7 @@ impl<T> Cell<T> {
         }
         .into();
         self_ref_mut.next = Some(Rc::clone(&new_cell));
-        new_cell
+        Rc::downgrade(&new_cell)
     }
 
     fn prepend(self_ref: CellStrongRef<T>, item: T) -> CellStrongRef<T> {
@@ -157,7 +157,7 @@ impl<T> LinkedList<T> {
 
     pub fn add_last(&mut self, new_last: T) {
         self.last = if let Some(last) = self.last.take().and_then(|v| v.upgrade()) {
-            Some(Rc::downgrade(&Cell::append(last, new_last)))
+            Some(Cell::append(last, new_last))
         } else {
             let cell = Cell::new(new_last).into();
             self.first = Some(Rc::clone(&cell));
