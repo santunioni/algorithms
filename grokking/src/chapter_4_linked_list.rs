@@ -149,8 +149,7 @@ impl<T> LinkedList<T> {
     }
 
     pub fn pop_first(&mut self) -> Option<T> {
-        let first = self.first.take()?;
-        let (_, item, next) = first.borrow_mut().pop();
+        let (_, item, next) = self.first.take()?.borrow_mut().pop();
         self.first = next;
         self.len -= 1;
         item
@@ -168,8 +167,7 @@ impl<T> LinkedList<T> {
     }
 
     pub fn pop_last(&mut self) -> Option<T> {
-        let last = self.last.take()?;
-        let (prev, item, _) = last.upgrade()?.borrow_mut().pop();
+        let (prev, item, _) = self.last.take()?.upgrade()?.borrow_mut().pop();
         self.last = prev;
         self.len -= 1;
         item
