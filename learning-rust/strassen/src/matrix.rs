@@ -4,17 +4,21 @@ use std::ops::{Add, Index, IndexMut, Mul, Sub};
 pub struct Matrix {
     rows: usize,
     cols: usize,
-    data: Vec<Vec<usize>>,
+    data: Vec<usize>,
 }
 
 type MatrixIndex = (usize, usize);
 
 impl Matrix {
+    fn convert_matrix_index_to_vec_index(&self, matrix_index: MatrixIndex) -> usize {
+        matrix_index.1 + matrix_index.0 * self.cols
+    }
+
     pub fn zeroes(rows: usize, cols: usize) -> Self {
         Matrix {
             rows,
             cols,
-            data: vec![vec![0; cols]; rows],
+            data: vec![0; rows * cols],
         }
     }
 
@@ -24,12 +28,6 @@ impl Matrix {
             identity[(i, i)] = 1;
         }
         identity
-    }
-
-    pub fn from_vec(data: Vec<Vec<usize>>) -> Self {
-        let rows = data.len();
-        let cols = data[0].len();
-        Matrix { rows, cols, data }
     }
 
     fn multiply_baseline(&self, other: &Matrix) -> Result<Matrix, &'static str> {
@@ -48,19 +46,23 @@ impl Matrix {
 
         Ok(result)
     }
+
+    // fn strassen_split(&self, rhs: &Matrix) -> [Matrix; 8] {}
 }
 
 impl Index<MatrixIndex> for Matrix {
     type Output = usize;
 
     fn index(&self, index: MatrixIndex) -> &Self::Output {
-        &self.data[index.0][index.1] // Trocar por vetorizacação
+        let vec_index = self.convert_matrix_index_to_vec_index(index);
+        &self.data[vec_index]
     }
 }
 
 impl IndexMut<MatrixIndex> for Matrix {
     fn index_mut(&mut self, index: MatrixIndex) -> &mut Self::Output {
-        &mut self.data[index.0][index.1] // Trocar por vetorizacação
+        let vec_index = self.convert_matrix_index_to_vec_index(index);
+        &mut self.data[vec_index]
     }
 }
 
@@ -113,7 +115,13 @@ impl Mul<Self> for &Matrix {
                 self.multiply_baseline(rhs)
             }
             (_self_rows, _self_cols, _other_cols) => {
-                self.multiply_baseline(rhs) // Change to Strassen
+                // //! Matrix names are defined in the picture
+                // //! https://www.interviewbit.com/blog/wp-content/uploads/2021/12/New-quadrants-768x482.png
+                // let [a, b, c, d, e, f, g, h] = self.stranssen_split(rhs);
+                // // let p_1 =
+                //
+                // // Change to Strassen
+                self.multiply_baseline(rhs)
             }
         }
     }
@@ -141,11 +149,16 @@ impl PartialEq<Self> for Matrix {
 macro_rules! matrix {
     ( $( [ $( $x:expr ),* ] ),* ) => {
         {
-            let mut temp_vec = Vec::new();
-            $(
-                temp_vec.push(vec![$($x),*]);
-            )*
-            Matrix::from_vec(temp_vec)
+            let temp_vec = vec![$( vec![$($x),*] ),*];
+            let rows = temp_vec.len();
+            let cols = temp_vec[0].len();
+            let mut matrix = Matrix::zeroes(rows, cols);
+            for (row_idx, row_vec) in temp_vec.iter().enumerate() {
+                for (col_index, &val) in row_vec.iter().enumerate() {
+                    matrix[(row_idx, col_index)] = val;
+                }
+            }
+            matrix
         }
     };
 }
