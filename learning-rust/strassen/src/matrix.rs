@@ -1,10 +1,27 @@
 use std::ops::{Add, Index, IndexMut, Mul, Sub};
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct Matrix {
     rows: usize,
     cols: usize,
     data: Vec<usize>,
+}
+
+#[derive(Clone, Debug)]
+pub struct MatrixRef<'a> {
+    rows: usize,
+    cols: usize,
+    data: &'a [usize],
+}
+
+impl<'a> MatrixRef<'a> {
+    pub(crate) fn materialize(&self) -> Matrix {
+        Matrix {
+            rows: self.rows,
+            cols: self.cols,
+            data: self.data.into(),
+        }
+    }
 }
 
 type MatrixIndex = (usize, usize);
@@ -19,6 +36,14 @@ impl Matrix {
             rows,
             cols,
             data: vec![0; rows * cols],
+        }
+    }
+
+    pub fn get_reference(&self) -> MatrixRef {
+        MatrixRef {
+            rows: self.rows,
+            cols: self.cols,
+            data: &self.data,
         }
     }
 

@@ -17,6 +17,15 @@ mod tests {
     }
 
     #[test]
+    fn should_copy_matrix_from_reference() -> TestResult {
+        let matrix = matrix![[1, 2], [3, 4]];
+        let copy = matrix.get_reference().materialize();
+
+        assert_eq!(matrix, copy);
+        Ok(())
+    }
+
+    #[test]
     fn should_multiply_column_matrix_by_row_matrix() -> TestResult {
         // ARRANGE
         let row_matrix = matrix!([1, 2, 5]);
