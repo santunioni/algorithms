@@ -25,10 +25,6 @@ impl<T> Node<T> {
         }
     }
 
-    fn item(&self) -> &T {
-        &self.item.as_ref().unwrap()
-    }
-
     fn pop(&mut self) -> (Option<NodeWeakRef<T>>, Option<T>, Option<NodeStrongRef<T>>) {
         let Node { item, prev, next } = self;
 
@@ -100,33 +96,30 @@ impl<T> Drain<T> {
 
 pub struct LinkedListIterator<'a, T> {
     curr: Option<Ref<'a, Node<T>>>,
-    next: Option<Ref<'a, Node<T>>>,
 }
 
 impl<'a, T> LinkedListIterator<'a, T> {
     fn new(list: &LinkedList<T>) -> LinkedListIterator<T> {
         LinkedListIterator {
-            curr: None,
-            next: list.get_first(),
+            curr: list.first.as_ref().map(|first| first.borrow()),
         }
     }
 }
 
-impl<'a, T> Iterator for LinkedListIterator<'a, T> {
-    type Item = Ref<'a, T>;
+// impl<'a,T: 'a> Iterator for LinkedListIterator<'a,T> {
+//     type Item = &'a T;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        self.curr = self.next.take();
-        if let Some(curr) = self.curr.take() {
-            if let Some(next) = &self.next {
-                self.next = Some(Ref::clone(next));
-            }
-            Some(Ref::map(curr, |node| node.item.as_ref().unwrap()))
-        } else {
-            None
-        }
-    }
-}
+//     fn next(&mut self) -> Option<Self::Item> {
+//         let curr = self.curr.take();
+//         if let Some(current) = curr {
+//             let next = &current.next.as_ref().map(|next| next.borrow());
+//             self.curr = next;
+//             current.item.as_ref()
+//         } else {
+//             None
+//         }
+//     }
+// }
 
 impl<T> Iterator for Drain<T> {
     type Item = T;
@@ -159,6 +152,9 @@ impl<T> LinkedList<T> {
         Drain::new(self)
     }
 
+    pub fn iter(&self) -> LinkedListIterator<T> {
+        LinkedListIterator::new(self)
+    }
     pub fn add_first(&mut self, new_first: T) {
         self.first = Some(match self.first.take() {
             Some(first) => Node::prepend(first, new_first),
@@ -283,6 +279,19 @@ mod tests {
 
         assert_eq!(iter.next().unwrap(), 1);
         assert_eq!(iter.next().unwrap(), 2);
-        assert_eq!(iter.next(), None);
+        assert!(iter.next().is_none());
     }
+
+    // #[test]
+    // fn should_iterate() {
+    //     let mut list = LinkedList::empty();
+    //     list.add_last(1);
+    //     list.add_last(2);
+    //
+    //     let mut iter = list.iter();
+    //
+    //     assert_eq!(iter.next().unwrap().clone(), 1.into());
+    //     assert_eq!(iter.next().unwrap().clone(), 2.into());
+    //     assert!(iter.next().is_none());
+    // }
 }
