@@ -16,6 +16,13 @@ impl<T> Into<CellRef<T>> for Cell<T> {
 }
 
 impl<T> Cell<T> {
+    fn new(item: T) -> Cell<T> {
+        Cell {
+            item: Some(item),
+            prev: None,
+            next: None,
+        }
+    }
     fn pop(&mut self) -> (Option<CellRef<T>>, Option<T>, Option<CellRef<T>>) {
         let Cell { item, prev, next } = self;
 
@@ -32,16 +39,30 @@ impl<T> Cell<T> {
         (prev.take(), item.take(), next.take())
     }
 
-    fn prepend(mut self, item: T) {
-        let old_prev = self.prev.take();
-        let self_ref = self.into();
+    fn append(self_ref: CellRef<T>, item: T) -> CellRef<T> {
+        let mut self_ref_mut = self_ref.borrow_mut();
+        let old_next = self_ref_mut.next.take();
+        let new_cell = Cell {
+            item: Some(item),
+            prev: Some(Rc::clone(&self_ref)),
+            next: old_next,
+        }
+        .into();
+        self_ref_mut.next = Some(Rc::clone(&new_cell));
+        new_cell
+    }
+
+    fn prepend(self_ref: CellRef<T>, item: T) -> CellRef<T> {
+        let mut self_ref_mut = self_ref.borrow_mut();
+        let old_prev = self_ref_mut.prev.take();
         let new_cell = Cell {
             item: Some(item),
             next: Some(Rc::clone(&self_ref)),
             prev: old_prev,
-        };
-
-        self_ref.borrow_mut().prev = Some(new_cell.into());
+        }
+        .into();
+        self_ref_mut.prev = Some(Rc::clone(&new_cell));
+        new_cell
     }
 }
 
@@ -105,25 +126,12 @@ impl<T> LinkedList<T> {
     }
 
     pub fn add_first(&mut self, new_first: T) {
-        let old_first_now_second = self.first.take();
-
-        let new_first = Cell {
-            item: Some(new_first),
-            next: match &old_first_now_second {
-                None => None,
-                Some(linked_item_ref) => Some(Rc::clone(linked_item_ref)),
-            },
-            prev: None,
-        }
-        .into();
-
-        if let Some(linked_item_ref) = old_first_now_second {
-            linked_item_ref.borrow_mut().prev = Some(Rc::clone(&new_first));
+        self.first = if let Some(first) = self.first.take() {
+            Some(Cell::prepend(first, new_first))
         } else {
-            self.last = Some(Rc::clone(&new_first))
-        }
-
-        self.first = Some(Rc::clone(&new_first));
+            self.last = Some(Cell::new(new_first).into());
+            self.last.as_ref().map(Rc::clone)
+        };
         self.len += 1;
     }
 
@@ -136,25 +144,12 @@ impl<T> LinkedList<T> {
     }
 
     pub fn add_last(&mut self, new_last: T) {
-        let old_last = self.last.take();
-
-        let new_last = Cell {
-            item: Some(new_last),
-            next: None,
-            prev: match &old_last {
-                None => None,
-                Some(linked_item_ref) => Some(Rc::clone(linked_item_ref)),
-            },
-        }
-        .into();
-
-        if let Some(linked_item_ref) = old_last {
-            linked_item_ref.borrow_mut().next = Some(Rc::clone(&new_last));
+        self.last = if let Some(last) = self.last.take() {
+            Some(Cell::append(last, new_last))
         } else {
-            self.first = Some(Rc::clone(&new_last));
-        }
-
-        self.last = Some(Rc::clone(&new_last));
+            self.first = Some(Cell::new(new_last).into());
+            self.first.as_ref().map(Rc::clone)
+        };
         self.len += 1;
     }
 
