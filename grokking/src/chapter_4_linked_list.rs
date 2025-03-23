@@ -84,11 +84,13 @@ pub struct LinkedList<T> {
     last: Option<NodeWeakRef<T>>,
 }
 
-pub struct Drain<T>(LinkedList<T>);
+pub struct Drain<T> {
+    list: LinkedList<T>,
+}
 
 impl<T> Drain<T> {
     fn new(list: LinkedList<T>) -> Self {
-        Drain(list)
+        Drain { list }
     }
 }
 
@@ -96,7 +98,7 @@ impl<T> Iterator for Drain<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.pop_first()
+        self.list.pop_first()
     }
 }
 
