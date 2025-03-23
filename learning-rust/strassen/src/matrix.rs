@@ -15,7 +15,7 @@ pub struct MatrixRef<'a> {
 }
 
 impl<'a> MatrixRef<'a> {
-    pub(crate) fn materialize(&self) -> Matrix {
+    pub fn materialize(&self) -> Matrix {
         Matrix {
             rows: self.rows,
             cols: self.cols,
