@@ -109,18 +109,25 @@ impl<T> LinkedList<T> {
         }
     }
 
+    pub fn new(item: T) -> LinkedList<T> {
+        let mut list = Self::empty();
+        list.add_first(item);
+        list
+    }
+
     pub fn drain(self) -> Drain<T> {
         Drain::new(self)
     }
 
     pub fn add_first(&mut self, new_first: T) {
-        self.first = if let Some(first) = self.first.take() {
-            Some(Node::prepend(first, new_first))
-        } else {
-            let cell = Node::new(new_first).into();
-            self.last = Some(Rc::downgrade(&cell));
-            Some(cell)
-        };
+        self.first = Some(match self.first.take() {
+            Some(first) => Node::prepend(first, new_first),
+            None => {
+                let cell = Node::new(new_first).into();
+                self.last = Some(Rc::downgrade(&cell));
+                cell
+            }
+        });
         self.len += 1;
     }
 
@@ -132,13 +139,14 @@ impl<T> LinkedList<T> {
     }
 
     pub fn add_last(&mut self, new_last: T) {
-        self.last = if let Some(last) = self.last.take().and_then(|v| v.upgrade()) {
-            Some(Node::append(last, new_last))
-        } else {
-            let cell = Node::new(new_last).into();
-            self.first = Some(Rc::clone(&cell));
-            Some(Rc::downgrade(&cell))
-        };
+        self.last = Some(match self.last.take().and_then(|v| v.upgrade()) {
+            Some(last) => Node::append(last, new_last),
+            None => {
+                let cell = Node::new(new_last).into();
+                self.first = Some(Rc::clone(&cell));
+                Rc::downgrade(&cell)
+            }
+        });
         self.len += 1;
     }
 
