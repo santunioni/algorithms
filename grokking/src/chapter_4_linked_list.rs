@@ -15,6 +15,24 @@ impl<T> Into<LinkedItemRef<T>> for LinkedItem<T> {
     }
 }
 
+impl<T> LinkedItem<T> {
+    fn pop(self) -> LinkedItem<T> {
+        let LinkedItem { item, prev, next } = self;
+
+        match (&prev, &next) {
+            (Some(prev), Some(next)) => {
+                prev.borrow_mut().next = Some(Rc::clone(next));
+                next.borrow_mut().prev = Some(Rc::clone(prev));
+            }
+            (Some(prev), None) => prev.borrow_mut().next = None,
+            (None, Some(next)) => next.borrow_mut().prev = None,
+            (None, None) => {}
+        }
+
+        LinkedItem { item, prev, next }
+    }
+}
+
 pub struct LinkedList<T> {
     len: u64,
     first: Option<LinkedItemRef<T>>,
@@ -147,22 +165,6 @@ impl<T> LinkedList<T> {
     pub fn len(&self) -> u64 {
         self.len
     }
-}
-
-fn main() {
-    // Create a RefCell containing an integer
-    let data = RefCell::new(42);
-
-    // Borrow the data mutably
-    let mut borrowed_data = data.borrow_mut();
-
-    // Modify or extract the data
-    *borrowed_data = 100; // For example, modifying the data
-
-    // If you wish to completely move the data out of RefCell
-    let data_moved = *borrowed_data; // Move data out (if you are the sole owner)
-
-    println!("{}", data_moved);
 }
 
 #[cfg(test)]
