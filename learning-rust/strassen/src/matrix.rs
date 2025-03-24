@@ -17,6 +17,12 @@ impl Matrix {
         }
     }
 
+    pub fn scalar(value: i64) -> Self {
+        let mut matrix = Matrix::zeroes(1, 1);
+        matrix[(0, 0)] = value;
+        matrix
+    }
+
     pub fn empty() -> Self {
         Matrix {
             rows: 0,
@@ -26,10 +32,10 @@ impl Matrix {
     }
 
     pub fn is_empty(&self) -> bool {
-        return self.data.len() == 0;
+        self.data.len() == 0
     }
 
-    pub fn from_four_pieces(
+    pub(crate) fn assemble_from_four_pieces(
         left_top: &SubMatrix,
         right_top: &SubMatrix,
         left_bottom: &SubMatrix,

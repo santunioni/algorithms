@@ -1,18 +1,22 @@
 use crate::matrix::Matrix;
-use crate::sub_matrix::MatrixMultiplicationError::MatricesDimensionDoNotMatch;
+use crate::sub_matrix::MatrixOperationError::{
+    AdditionDimensionsDontMatch, MultiplicationDimensionsDontMatch, SubtractionDimensionsDontMatch,
+};
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, Index, Mul, Sub};
 use thiserror::Error;
 
 pub type MatrixIndex = (usize, usize);
-pub type MatrixOperationResult = Result<Matrix, MatrixMultiplicationError>;
+pub type MatrixOperationResult = Result<Matrix, MatrixOperationError>;
 
 #[derive(Error, Debug)]
-pub enum MatrixMultiplicationError {
-    MatricesDimensionDoNotMatch,
+pub enum MatrixOperationError {
+    MultiplicationDimensionsDontMatch,
+    AdditionDimensionsDontMatch,
+    SubtractionDimensionsDontMatch,
 }
 
-impl Display for MatrixMultiplicationError {
+impl Display for MatrixOperationError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         Debug::fmt(&self, f)?;
         Ok(())
@@ -86,7 +90,7 @@ impl<'a> Sub<Self> for &SubMatrix<'a> {
 
     fn sub(self, rhs: Self) -> Self::Output {
         if self.rows() != rhs.rows() || self.cols() != rhs.cols() {
-            return Err(MatricesDimensionDoNotMatch);
+            return Err(SubtractionDimensionsDontMatch);
         }
         let mut result = self.materialize();
         for i in 0..self.rows() {
@@ -103,7 +107,7 @@ impl<'a> Add<Self> for &SubMatrix<'a> {
 
     fn add(self, rhs: Self) -> Self::Output {
         if self.rows() != rhs.rows() || self.cols() != rhs.cols() {
-            return Err(MatricesDimensionDoNotMatch);
+            return Err(AdditionDimensionsDontMatch);
         }
         let mut result = self.materialize();
         for i in 0..self.rows() {
@@ -116,13 +120,42 @@ impl<'a> Add<Self> for &SubMatrix<'a> {
 }
 
 impl<'a> SubMatrix<'a> {
-    fn multiply_strassen(&self, rhs: &SubMatrix) -> MatrixOperationResult {
-        Err(MatricesDimensionDoNotMatch)
+    fn mult_strassen(&self, rhs: &SubMatrix) -> MatrixOperationResult {
+        if self.rows() == 1 {
+            let scalar: i64 = &self[(0, 0)] * &rhs[(0, 0)];
+            return Ok(Matrix::scalar(scalar));
+        }
+
+        let half = self.rows() / 2;
+
+        let [a, b, c, d] = self.split_in_4_parts(half, half);
+        let [e, f, g, h] = self.split_in_4_parts(half, half);
+
+        let p1 = a.mult_strassen(&(&f - &h)?.as_sub_matrix())?;
+        let p2 = (&a + &b)?.as_sub_matrix().mult_strassen(&h)?;
+        let p3 = (&c + &d)?.as_sub_matrix().mult_strassen(&e)?;
+        let p4 = d.mult_strassen(&(&g - &e)?.as_sub_matrix())?;
+        let p5 = (&a + &d)?
+            .as_sub_matrix()
+            .mult_strassen(&(&e - &h)?.as_sub_matrix())?;
+        let p6 = (&b - &d)?
+            .as_sub_matrix()
+            .mult_strassen(&(&g + &h)?.as_sub_matrix())?;
+        let p7 = (&a - &c)?
+            .as_sub_matrix()
+            .mult_strassen(&(&e + &f)?.as_sub_matrix())?;
+
+        Ok(Matrix::assemble_from_four_pieces(
+            &(&(&p5 + &p4)? - &(&p2 - &p6)?)?.as_sub_matrix(),
+            &(&p1 + &p2)?.as_sub_matrix(),
+            &(&p3 + &p4)?.as_sub_matrix(),
+            &(&(&p1 + &p5)? - &(&p3 + &p7)?)?.as_sub_matrix(),
+        ))
     }
 
     fn multiply_baseline(&self, rhs: &SubMatrix) -> MatrixOperationResult {
         if self.cols() != rhs.rows() {
-            return Err(MatricesDimensionDoNotMatch);
+            return Err(MultiplicationDimensionsDontMatch);
         }
 
         let mut result = Matrix::zeroes(self.rows(), rhs.cols());
@@ -188,7 +221,7 @@ impl<'a> Mul<Self> for &SubMatrix<'a> {
 
     fn mul(self, rhs: Self) -> Self::Output {
         if self.cols() != rhs.rows() {
-            return Err(MatricesDimensionDoNotMatch);
+            return Err(MultiplicationDimensionsDontMatch);
         }
 
         let left_rows = self.rows();
@@ -202,9 +235,29 @@ impl<'a> Mul<Self> for &SubMatrix<'a> {
         let lesser_dimension = left_rows.min(inner_multiplication_index).min(right_cols);
         let dimension_to_split = 2u32.pow(lesser_dimension.ilog2()) as usize;
 
-        // let [left_top, right_top, left_bottom, right_bottom] =
-        //     self.split_in_4_parts(dimension_to_split);
+        let [lhs_left_top, lhs_right_top, lhs_left_bottom, lhs_right_bottom] =
+            self.split_in_4_parts(dimension_to_split, dimension_to_split);
 
-        self.multiply_baseline(&rhs)
+        let [rhs_left_top, rhs_right_top, rhs_left_bottom, rhs_right_bottom] =
+            self.split_in_4_parts(dimension_to_split, dimension_to_split);
+
+        let left_top =
+            (&lhs_left_top.mult_strassen(&rhs_left_top)? + &(&lhs_right_top * &rhs_left_bottom)?)?;
+
+        let right_top =
+            (&(&lhs_left_top * &rhs_right_top)? + &(&lhs_right_top * &rhs_right_bottom)?)?;
+
+        let left_bottom =
+            (&(&lhs_left_bottom * &rhs_left_top)? + &(&lhs_right_bottom * &rhs_left_bottom)?)?;
+
+        let left_right =
+            (&(&lhs_left_bottom * &rhs_right_top)? + &(&lhs_right_bottom * &rhs_right_bottom)?)?;
+
+        Ok(Matrix::assemble_from_four_pieces(
+            &left_top.as_sub_matrix(),
+            &right_top.as_sub_matrix(),
+            &left_bottom.as_sub_matrix(),
+            &left_right.as_sub_matrix(),
+        ))
     }
 }
