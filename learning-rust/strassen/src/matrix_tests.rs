@@ -59,9 +59,102 @@ mod tests {
     }
 
     #[test]
+    fn should_add_matrices() -> TestResult {
+        // ARRANGE
+        let matrix1 = matrix!([1, 2], [3, 4]);
+        let matrix2 = matrix!([5, 6], [7, 8]);
+
+        // ACT
+        let result = &matrix1 + &matrix2;
+
+        // ASSERT
+        let expected = matrix!([6, 8], [10, 12]);
+        assert_eq!(result?, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn should_subtract_matrices() -> TestResult {
+        // ARRANGE
+        let matrix1 = matrix!([5, 6], [7, 8]);
+        let matrix2 = matrix!([1, 2], [3, 4]);
+
+        // ACT
+        let result = &matrix1 - &matrix2;
+
+        // ASSERT
+        let expected = matrix!([4, 4], [4, 4]);
+        assert_eq!(result?, expected);
+        Ok(())
+    }
+
+    #[test]
     fn should_add_empty_matrices() -> TestResult {
-        let result = (&Matrix::empty() + &Matrix::empty())?;
-        assert_eq!(result, Matrix::empty());
+        // ARRANGE
+        let matrix1 = Matrix::empty();
+        let matrix2 = Matrix::empty();
+
+        // ACT
+        let result = &matrix1 + &matrix2;
+
+        // ASSERT
+        assert_eq!(result?, Matrix::empty());
+        Ok(())
+    }
+
+    #[test]
+    fn should_subtract_empty_matrices() -> TestResult {
+        // ARRANGE
+        let matrix1 = Matrix::empty();
+        let matrix2 = Matrix::empty();
+
+        // ACT
+        let result = &matrix1 - &matrix2;
+
+        // ASSERT
+        assert_eq!(result?, Matrix::empty());
+        Ok(())
+    }
+
+    #[test]
+    fn should_add_matrices_with_different_dimensions() -> TestResult {
+        // ARRANGE
+        let matrix1 = matrix!([1, 2], [3, 4]);
+        let matrix2 = matrix!([5, 6, 7]);
+
+        // ACT
+        let result = &matrix1 + &matrix2;
+
+        // ASSERT
+        assert!(result.is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn should_subtract_matrices_with_different_dimensions() -> TestResult {
+        // ARRANGE
+        let matrix1 = matrix!([1, 2], [3, 4]);
+        let matrix2 = matrix!([5, 6, 7]);
+
+        // ACT
+        let result = &matrix1 - &matrix2;
+
+        // ASSERT
+        assert!(result.is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn should_multiply_matrices_with_invalid_dimensions() -> TestResult {
+        // ARRANGE
+        let matrix1 = matrix!([1, 2]);
+        let matrix2 = matrix!([3, 4]);
+
+        // ACT
+        let result = &matrix1 * &matrix2;
+
+        // ASSERT
+        assert!(result.is_err());
         Ok(())
     }
 }
