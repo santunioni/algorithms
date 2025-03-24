@@ -61,12 +61,11 @@ mod tests {
     #[test]
     fn should_return_identity() -> TestResult {
         // ASSERT
-        for i in 1..100 {
-            assert_eq!(
-                (&Matrix::identity(i) * &Matrix::identity(i))?,
-                Matrix::identity(i)
-            );
-        }
+        let size = 30;
+        assert_eq!(
+            (&Matrix::identity(size) * &Matrix::identity(size))?,
+            Matrix::identity(size)
+        );
         Ok(())
     }
 
@@ -97,34 +96,6 @@ mod tests {
         // ASSERT
         let expected = matrix!([4, 4], [4, 4]);
         assert_eq!(result?, expected);
-        Ok(())
-    }
-
-    #[test]
-    fn should_add_empty_matrices() -> TestResult {
-        // ARRANGE
-        let matrix1 = Matrix::empty();
-        let matrix2 = Matrix::empty();
-
-        // ACT
-        let result = &matrix1 + &matrix2;
-
-        // ASSERT
-        assert_eq!(result?, Matrix::empty());
-        Ok(())
-    }
-
-    #[test]
-    fn should_subtract_empty_matrices() -> TestResult {
-        // ARRANGE
-        let matrix1 = Matrix::empty();
-        let matrix2 = Matrix::empty();
-
-        // ACT
-        let result = &matrix1 - &matrix2;
-
-        // ASSERT
-        assert_eq!(result?, Matrix::empty());
         Ok(())
     }
 

@@ -27,12 +27,8 @@ impl Matrix {
         Matrix {
             rows: 0,
             cols: 0,
-            data: Vec::with_capacity(0),
+            data: vec![],
         }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.data.len() == 0
     }
 
     pub(crate) fn assemble_from_four_pieces(
@@ -111,9 +107,6 @@ impl Add<Self> for &Matrix {
     type Output = MatrixOperationResult;
 
     fn add(self, rhs: Self) -> Self::Output {
-        if self.is_empty() {
-            return Ok(Matrix::empty());
-        }
         &self.as_sub_matrix() + &rhs.as_sub_matrix()
     }
 }
@@ -122,9 +115,6 @@ impl Sub<Self> for &Matrix {
     type Output = MatrixOperationResult;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        if self.is_empty() {
-            return Ok(Matrix::empty());
-        }
         &self.as_sub_matrix() - &rhs.as_sub_matrix()
     }
 }
@@ -133,9 +123,6 @@ impl Mul<Self> for &Matrix {
     type Output = MatrixOperationResult;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        if self.is_empty() {
-            return Ok(Matrix::empty());
-        }
         &self.as_sub_matrix() * &rhs.as_sub_matrix()
     }
 }

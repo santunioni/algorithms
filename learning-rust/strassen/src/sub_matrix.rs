@@ -32,6 +32,25 @@ impl MatrixWindow {
     }
 }
 
+enum SubME<'a> {
+    Empty,
+    Filled(SubMatrix<'a>),
+}
+
+impl SubME {}
+
+impl<'a> Add<Self> for &SubME<'a> {
+    type Output = MatrixOperationResult;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (SubME::Filled(lhs), SubME::Filled(rhs)) => lhs + rhs,
+            (SubME::Empty, SubME::Empty) => Ok(Matrix::empty()),
+            _ => Err(AdditionDimensionsDontMatch),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct SubMatrix<'a> {
     rows_window_from_parent: MatrixWindow,
@@ -47,7 +66,6 @@ impl<'a> SubMatrix<'a> {
             parent: &matrix,
         }
     }
-
     pub(crate) fn rows(&self) -> usize {
         self.rows_window_from_parent.size()
     }
@@ -59,10 +77,6 @@ impl<'a> SubMatrix<'a> {
     pub(crate) fn materialize(&self) -> Matrix {
         let rows = self.rows();
         let cols = self.cols();
-
-        if rows == 0 || cols == 0 {
-            return Matrix::empty();
-        }
 
         let mut matrix = Matrix::zeroes(rows, cols);
         for row in 0..rows {
@@ -173,7 +187,7 @@ impl<'a> SubMatrix<'a> {
         result
     }
 
-    pub(crate) fn split_horizontally(&self, at_col: usize) -> (SubMatrix<'a>, SubMatrix<'a>) {
+    pub(crate) fn split_horizontally(&self, at_col: usize) -> [SubMatrix<'a>; 2] {
         let cols = self.cols();
 
         let left = SubMatrix {
@@ -187,10 +201,10 @@ impl<'a> SubMatrix<'a> {
             parent: self.parent,
         };
 
-        (left, right)
+        [left, right]
     }
 
-    pub(crate) fn split_vertically(&self, at_row: usize) -> (SubMatrix<'a>, SubMatrix<'a>) {
+    pub(crate) fn split_vertically(&self, at_row: usize) -> [SubMatrix<'a>; 2] {
         let rows = self.rows();
 
         let top = SubMatrix {
@@ -204,17 +218,17 @@ impl<'a> SubMatrix<'a> {
             parent: self.parent,
         };
 
-        (top, bottom)
+        [top, bottom]
     }
 
     pub(crate) fn split_in_4_parts(&'a self, at_row: usize, at_col: usize) -> [SubMatrix<'a>; 4] {
         //! Matrix split order is defined in the picture
         //! https://www.interviewbit.com/blog/wp-content/uploads/2021/12/New-quadrants-768x482.png
-        let (left, right) = self.split_horizontally(at_col);
-        let ((left_top, left_bottom), (right_top, right_bottom)) = (
+        let [left, right] = self.split_horizontally(at_col);
+        let [[left_top, left_bottom], [right_top, right_bottom]] = [
             left.split_vertically(at_row),
             right.split_vertically(at_row),
-        );
+        ];
         [left_top, right_top, left_bottom, right_bottom]
     }
 }
@@ -231,10 +245,6 @@ impl<'a> Mul<Self> for &SubMatrix<'a> {
         let inner_multiplication_index = self.cols();
         let right_cols = rhs.cols();
 
-        if left_rows == 0 || inner_multiplication_index == 0 || right_cols == 0 {
-            return Ok(Matrix::empty());
-        }
-
         if left_rows == 1 || inner_multiplication_index == 1 || right_cols == 1 {
             return Ok(self.multiply_baseline(&rhs));
         }
@@ -243,23 +253,21 @@ impl<'a> Mul<Self> for &SubMatrix<'a> {
         let lesser_dimension_log = lesser_dimension.ilog2();
         let dimension_to_split = 2u32.pow(lesser_dimension_log) as usize;
 
-        let [lhs_left_top, lhs_right_top, lhs_left_bottom, lhs_right_bottom] =
+        let [lhs_left_top, lhs_right_top, lhs_left_bot, lhs_right_bot] =
             self.split_in_4_parts(dimension_to_split, dimension_to_split);
 
-        let [rhs_left_top, rhs_right_top, rhs_left_bottom, rhs_right_bottom] =
-            self.split_in_4_parts(dimension_to_split, dimension_to_split);
+        let [rhs_left_top, rhs_right_top, rhs_left_bot, rhs_right_bot] =
+            rhs.split_in_4_parts(dimension_to_split, dimension_to_split);
 
         let left_top =
-            (&lhs_left_top.mult_strassen(&rhs_left_top)? + &(&lhs_right_top * &rhs_left_bottom)?)?;
+            (&lhs_left_top.mult_strassen(&rhs_left_top)? + &(&lhs_right_top * &rhs_left_bot)?)?;
 
-        let right_top =
-            (&(&lhs_left_top * &rhs_right_top)? + &(&lhs_right_top * &rhs_right_bottom)?)?;
+        let right_top = (&(&lhs_left_top * &rhs_right_top)? + &(&lhs_right_top * &rhs_right_bot)?)?;
 
-        let left_bottom =
-            (&(&lhs_left_bottom * &rhs_left_top)? + &(&lhs_right_bottom * &rhs_left_bottom)?)?;
+        let left_bottom = (&(&lhs_left_bot * &rhs_left_top)? + &(&lhs_right_bot * &rhs_left_bot)?)?;
 
         let left_right =
-            (&(&lhs_left_bottom * &rhs_right_top)? + &(&lhs_right_bottom * &rhs_right_bottom)?)?;
+            (&(&lhs_left_bot * &rhs_right_top)? + &(&lhs_right_bot * &rhs_right_bot)?)?;
 
         Ok(Matrix::assemble_from_four_pieces(
             left_top,
