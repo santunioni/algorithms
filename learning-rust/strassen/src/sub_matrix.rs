@@ -145,19 +145,22 @@ impl<'a> SubMatrix<'a> {
             .as_sub_matrix()
             .mult_strassen(&(e + f)?.as_sub_matrix())?;
 
+        let [left_top, right_top, left_bottom, right_bottom] = [
+            (&(&p5 + &p4)? - &(&p2 - &p6)?)?,
+            (&p1 + &p2)?,
+            (&p3 + &p4)?,
+            (&(&p1 + &p5)? - &(&p3 + &p7)?)?,
+        ];
+
         Ok(Matrix::assemble_from_four_pieces(
-            (&(&p5 + &p4)? - &(&p2 - &p6)?)?.as_sub_matrix(),
-            (&p1 + &p2)?.as_sub_matrix(),
-            (&p3 + &p4)?.as_sub_matrix(),
-            (&(&p1 + &p5)? - &(&p3 + &p7)?)?.as_sub_matrix(),
+            left_top,
+            right_top,
+            left_bottom,
+            right_bottom,
         ))
     }
 
-    fn multiply_baseline(&self, rhs: &SubMatrix) -> MatrixOperationResult {
-        if self.cols() != rhs.rows() {
-            return Err(MultiplicationDimensionsDontMatch);
-        }
-
+    fn multiply_baseline(&self, rhs: &SubMatrix) -> Matrix {
         let mut result = Matrix::zeroes(self.rows(), rhs.cols());
         for i in 0..self.rows() {
             for j in 0..rhs.cols() {
@@ -167,7 +170,7 @@ impl<'a> SubMatrix<'a> {
             }
         }
 
-        Ok(result)
+        result
     }
 
     pub(crate) fn split_horizontally(&self, at_col: usize) -> (SubMatrix<'a>, SubMatrix<'a>) {
@@ -228,12 +231,17 @@ impl<'a> Mul<Self> for &SubMatrix<'a> {
         let inner_multiplication_index = self.cols();
         let right_cols = rhs.cols();
 
+        if left_rows == 0 || inner_multiplication_index == 0 || right_cols == 0 {
+            return Ok(Matrix::empty());
+        }
+
         if left_rows == 1 || inner_multiplication_index == 1 || right_cols == 1 {
-            return self.multiply_baseline(&rhs);
+            return Ok(self.multiply_baseline(&rhs));
         }
 
         let lesser_dimension = left_rows.min(inner_multiplication_index).min(right_cols);
-        let dimension_to_split = 2u32.pow(lesser_dimension.ilog2()) as usize;
+        let lesser_dimension_log = lesser_dimension.ilog2();
+        let dimension_to_split = 2u32.pow(lesser_dimension_log) as usize;
 
         let [lhs_left_top, lhs_right_top, lhs_left_bottom, lhs_right_bottom] =
             self.split_in_4_parts(dimension_to_split, dimension_to_split);
@@ -254,10 +262,10 @@ impl<'a> Mul<Self> for &SubMatrix<'a> {
             (&(&lhs_left_bottom * &rhs_right_top)? + &(&lhs_right_bottom * &rhs_right_bottom)?)?;
 
         Ok(Matrix::assemble_from_four_pieces(
-            left_top.as_sub_matrix(),
-            right_top.as_sub_matrix(),
-            left_bottom.as_sub_matrix(),
-            left_right.as_sub_matrix(),
+            left_top,
+            right_top,
+            left_bottom,
+            left_right,
         ))
     }
 }

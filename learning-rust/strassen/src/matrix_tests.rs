@@ -59,6 +59,18 @@ mod tests {
     }
 
     #[test]
+    fn should_return_identity() -> TestResult {
+        // ASSERT
+        for i in 1..100 {
+            assert_eq!(
+                (&Matrix::identity(i) * &Matrix::identity(i))?,
+                Matrix::identity(i)
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
     fn should_add_matrices() -> TestResult {
         // ARRANGE
         let matrix1 = matrix!([1, 2], [3, 4]);

@@ -36,13 +36,13 @@ impl Matrix {
     }
 
     pub(crate) fn assemble_from_four_pieces(
-        left_top: SubMatrix,
-        right_top: SubMatrix,
-        left_bottom: SubMatrix,
-        right_bottom: SubMatrix,
+        left_top: Matrix,
+        right_top: Matrix,
+        left_bottom: Matrix,
+        right_bottom: Matrix,
     ) -> Matrix {
-        let (top_rows, bottom_rows) = (left_top.rows(), left_bottom.rows());
-        let (left_columns, right_columns) = (left_top.cols(), right_top.cols());
+        let (top_rows, bottom_rows) = (left_top.rows, left_bottom.rows);
+        let (left_columns, right_columns) = (left_top.cols, right_top.cols);
         let (total_rows, total_cols) = (top_rows + bottom_rows, left_columns + right_columns);
 
         let mut matrix = Matrix::zeroes(total_rows, total_cols);
