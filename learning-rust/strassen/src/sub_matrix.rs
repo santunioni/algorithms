@@ -122,34 +122,34 @@ impl<'a> Add<Self> for &SubMatrix<'a> {
 impl<'a> SubMatrix<'a> {
     fn mult_strassen(&self, rhs: &SubMatrix) -> MatrixOperationResult {
         if self.rows() == 1 {
-            let scalar: i64 = &self[(0, 0)] * &rhs[(0, 0)];
+            let scalar: i64 = self[(0, 0)] * rhs[(0, 0)];
             return Ok(Matrix::scalar(scalar));
         }
 
         let half = self.rows() / 2;
 
-        let [a, b, c, d] = self.split_in_4_parts(half, half);
-        let [e, f, g, h] = self.split_in_4_parts(half, half);
+        let [a, b, c, d] = &self.split_in_4_parts(half, half);
+        let [e, f, g, h] = &self.split_in_4_parts(half, half);
 
-        let p1 = a.mult_strassen(&(&f - &h)?.as_sub_matrix())?;
-        let p2 = (&a + &b)?.as_sub_matrix().mult_strassen(&h)?;
-        let p3 = (&c + &d)?.as_sub_matrix().mult_strassen(&e)?;
-        let p4 = d.mult_strassen(&(&g - &e)?.as_sub_matrix())?;
-        let p5 = (&a + &d)?
+        let p1 = a.mult_strassen(&(f - h)?.as_sub_matrix())?;
+        let p2 = (a + b)?.as_sub_matrix().mult_strassen(h)?;
+        let p3 = (c + d)?.as_sub_matrix().mult_strassen(e)?;
+        let p4 = d.mult_strassen(&(g - e)?.as_sub_matrix())?;
+        let p5 = (a + d)?
             .as_sub_matrix()
-            .mult_strassen(&(&e - &h)?.as_sub_matrix())?;
-        let p6 = (&b - &d)?
+            .mult_strassen(&(e + h)?.as_sub_matrix())?;
+        let p6 = (b - d)?
             .as_sub_matrix()
-            .mult_strassen(&(&g + &h)?.as_sub_matrix())?;
-        let p7 = (&a - &c)?
+            .mult_strassen(&(g + h)?.as_sub_matrix())?;
+        let p7 = (a - c)?
             .as_sub_matrix()
-            .mult_strassen(&(&e + &f)?.as_sub_matrix())?;
+            .mult_strassen(&(e + f)?.as_sub_matrix())?;
 
         Ok(Matrix::assemble_from_four_pieces(
-            &(&(&p5 + &p4)? - &(&p2 - &p6)?)?.as_sub_matrix(),
-            &(&p1 + &p2)?.as_sub_matrix(),
-            &(&p3 + &p4)?.as_sub_matrix(),
-            &(&(&p1 + &p5)? - &(&p3 + &p7)?)?.as_sub_matrix(),
+            (&(&p5 + &p4)? - &(&p2 - &p6)?)?.as_sub_matrix(),
+            (&p1 + &p2)?.as_sub_matrix(),
+            (&p3 + &p4)?.as_sub_matrix(),
+            (&(&p1 + &p5)? - &(&p3 + &p7)?)?.as_sub_matrix(),
         ))
     }
 
@@ -254,10 +254,10 @@ impl<'a> Mul<Self> for &SubMatrix<'a> {
             (&(&lhs_left_bottom * &rhs_right_top)? + &(&lhs_right_bottom * &rhs_right_bottom)?)?;
 
         Ok(Matrix::assemble_from_four_pieces(
-            &left_top.as_sub_matrix(),
-            &right_top.as_sub_matrix(),
-            &left_bottom.as_sub_matrix(),
-            &left_right.as_sub_matrix(),
+            left_top.as_sub_matrix(),
+            right_top.as_sub_matrix(),
+            left_bottom.as_sub_matrix(),
+            left_right.as_sub_matrix(),
         ))
     }
 }

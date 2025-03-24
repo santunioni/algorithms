@@ -36,10 +36,10 @@ impl Matrix {
     }
 
     pub(crate) fn assemble_from_four_pieces(
-        left_top: &SubMatrix,
-        right_top: &SubMatrix,
-        left_bottom: &SubMatrix,
-        right_bottom: &SubMatrix,
+        left_top: SubMatrix,
+        right_top: SubMatrix,
+        left_bottom: SubMatrix,
+        right_bottom: SubMatrix,
     ) -> Matrix {
         let (top_rows, bottom_rows) = (left_top.rows(), left_bottom.rows());
         let (left_columns, right_columns) = (left_top.cols(), right_top.cols());
