@@ -28,14 +28,6 @@ impl MatrixWindow {
     }
 }
 
-impl Add<Self> for MatrixWindow {
-    type Output = MatrixWindow;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        MatrixWindow(self.0 + rhs.0, self.1 + rhs.1)
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct SubMatrix<'a> {
     rows_window_from_parent: MatrixWindow,
@@ -52,11 +44,11 @@ impl<'a> SubMatrix<'a> {
         }
     }
 
-    fn rows(&self) -> usize {
+    pub(crate) fn rows(&self) -> usize {
         self.rows_window_from_parent.size()
     }
 
-    fn cols(&self) -> usize {
+    pub(crate) fn cols(&self) -> usize {
         self.cols_window_from_parent.size()
     }
 
@@ -124,6 +116,10 @@ impl<'a> Add<Self> for &SubMatrix<'a> {
 }
 
 impl<'a> SubMatrix<'a> {
+    fn multiply_strassen(&self, rhs: &SubMatrix) -> MatrixOperationResult {
+        Err(MatricesDimensionDoNotMatch)
+    }
+
     fn multiply_baseline(&self, rhs: &SubMatrix) -> MatrixOperationResult {
         if self.cols() != rhs.rows() {
             return Err(MatricesDimensionDoNotMatch);
@@ -195,24 +191,20 @@ impl<'a> Mul<Self> for &SubMatrix<'a> {
             return Err(MatricesDimensionDoNotMatch);
         }
 
-        match (self.rows(), self.cols(), rhs.cols()) {
-            (self_rows, self_cols, other_cols)
-                if self_rows == 1 || self_cols == 1 || other_cols == 1 =>
-            {
-                self.multiply_baseline(&rhs)
-            }
-            (left_rows, inner_mult_size, right_cols) => {
-                // Matrix names are defined in the picture
-                // https://www.interviewbit.com/blog/wp-content/uploads/2021/12/New-quadrants-768x482.png
-                // let [a, b, c, d, e, f, g, h] = self.strassen_split(rhs);
-                // // let p_1 =
-                //
-                // // Change to Strassen
-                let dimension_to_split =
-                    2u32.pow(left_rows.min(inner_mult_size).min(right_cols).ilog2());
-                println!("dimension_to_split={dimension_to_split}");
-                self.multiply_baseline(&rhs)
-            }
+        let left_rows = self.rows();
+        let inner_multiplication_index = self.cols();
+        let right_cols = rhs.cols();
+
+        if left_rows == 1 || inner_multiplication_index == 1 || right_cols == 1 {
+            return self.multiply_baseline(&rhs);
         }
+
+        let lesser_dimension = left_rows.min(inner_multiplication_index).min(right_cols);
+        let dimension_to_split = 2u32.pow(lesser_dimension.ilog2()) as usize;
+
+        // let [left_top, right_top, left_bottom, right_bottom] =
+        //     self.split_in_4_parts(dimension_to_split);
+
+        self.multiply_baseline(&rhs)
     }
 }

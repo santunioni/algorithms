@@ -25,6 +25,42 @@ impl Matrix {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        return self.data.len() == 0;
+    }
+
+    pub fn from_four_pieces(
+        left_top: &SubMatrix,
+        right_top: &SubMatrix,
+        left_bottom: &SubMatrix,
+        right_bottom: &SubMatrix,
+    ) -> Matrix {
+        let (top_rows, bottom_rows) = (left_top.rows(), left_bottom.rows());
+        let (left_columns, right_columns) = (left_top.cols(), right_top.cols());
+        let (total_rows, total_cols) = (top_rows + bottom_rows, left_columns + right_columns);
+
+        let mut matrix = Matrix::zeroes(total_rows, total_cols);
+
+        for row in 0..top_rows {
+            for col in 0..left_columns {
+                matrix[(row, col)] = left_top[(row, col)];
+            }
+            for col in left_columns..total_cols {
+                matrix[(row, col)] = right_top[(row, col - left_columns)];
+            }
+        }
+        for row in top_rows..total_rows {
+            for col in 0..left_columns {
+                matrix[(row, col)] = left_bottom[(row - top_rows, col)];
+            }
+            for col in left_columns..total_cols {
+                matrix[(row, col)] = right_bottom[(row - top_rows, col - left_columns)];
+            }
+        }
+
+        matrix
+    }
+
     pub fn identity(size: usize) -> Self {
         let mut identity = Matrix::zeroes(size, size);
         for i in 0..size {
@@ -69,6 +105,9 @@ impl Add<Self> for &Matrix {
     type Output = MatrixOperationResult;
 
     fn add(self, rhs: Self) -> Self::Output {
+        if self.is_empty() {
+            return Ok(Matrix::empty());
+        }
         &self.as_sub_matrix() + &rhs.as_sub_matrix()
     }
 }
@@ -77,6 +116,9 @@ impl Sub<Self> for &Matrix {
     type Output = MatrixOperationResult;
 
     fn sub(self, rhs: Self) -> Self::Output {
+        if self.is_empty() {
+            return Ok(Matrix::empty());
+        }
         &self.as_sub_matrix() - &rhs.as_sub_matrix()
     }
 }
@@ -85,6 +127,9 @@ impl Mul<Self> for &Matrix {
     type Output = MatrixOperationResult;
 
     fn mul(self, rhs: Self) -> Self::Output {
+        if self.is_empty() {
+            return Ok(Matrix::empty());
+        }
         &self.as_sub_matrix() * &rhs.as_sub_matrix()
     }
 }

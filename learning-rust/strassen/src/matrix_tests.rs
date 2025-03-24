@@ -57,4 +57,11 @@ mod tests {
         assert_eq!(result?, matrix);
         Ok(())
     }
+
+    #[test]
+    fn should_add_empty_matrices() -> TestResult {
+        let result = (&Matrix::empty() + &Matrix::empty())?;
+        assert_eq!(result, Matrix::empty());
+        Ok(())
+    }
 }
