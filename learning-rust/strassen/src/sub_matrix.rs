@@ -2,6 +2,7 @@ use crate::matrix::Matrix;
 use crate::sub_matrix::MatrixOperationError::{
     AdditionDimensionsDontMatch, MultiplicationDimensionsDontMatch, SubtractionDimensionsDontMatch,
 };
+use crate::sub_matrix::SubMatrix::Empty;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, Index, Mul, Sub};
 use thiserror::Error;
@@ -32,46 +33,35 @@ impl MatrixWindow {
     }
 }
 
-enum SubME<'a> {
-    Empty,
-    Filled(SubMatrix<'a>),
-}
-
-impl SubME {}
-
-impl<'a> Add<Self> for &SubME<'a> {
-    type Output = MatrixOperationResult;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (SubME::Filled(lhs), SubME::Filled(rhs)) => lhs + rhs,
-            (SubME::Empty, SubME::Empty) => Ok(Matrix::empty()),
-            _ => Err(AdditionDimensionsDontMatch),
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
-pub(crate) struct SubMatrix<'a> {
-    rows_window_from_parent: MatrixWindow,
-    cols_window_from_parent: MatrixWindow,
-    parent: &'a Matrix,
+pub(crate) enum SubMatrix<'a> {
+    Empty,
+    Filled {
+        rows_window_from_parent: MatrixWindow,
+        cols_window_from_parent: MatrixWindow,
+        parent: &'a Matrix,
+    },
 }
 
 impl<'a> SubMatrix<'a> {
-    pub fn new(matrix: &Matrix, rows_window: MatrixWindow, cols_window: MatrixWindow) -> SubMatrix {
-        SubMatrix {
-            cols_window_from_parent: cols_window,
-            rows_window_from_parent: rows_window,
-            parent: &matrix,
-        }
-    }
     pub(crate) fn rows(&self) -> usize {
-        self.rows_window_from_parent.size()
+        match self {
+            SubMatrix::Empty => 0,
+            SubMatrix::Filled {
+                rows_window_from_parent,
+                ..
+            } => rows_window_from_parent.size(),
+        }
     }
 
     pub(crate) fn cols(&self) -> usize {
-        self.cols_window_from_parent.size()
+        match self {
+            SubMatrix::Empty => 0,
+            SubMatrix::Filled {
+                cols_window_from_parent,
+                ..
+            } => cols_window_from_parent.size(),
+        }
     }
 
     pub(crate) fn materialize(&self) -> Matrix {
@@ -93,9 +83,42 @@ impl<'a> Index<MatrixIndex> for SubMatrix<'a> {
     type Output = i64;
 
     fn index(&self, index: MatrixIndex) -> &Self::Output {
-        let row = index.0 + self.rows_window_from_parent.0;
-        let column = index.1 + self.cols_window_from_parent.0;
-        &self.parent[(row, column)]
+        match self {
+            SubMatrix::Empty => panic!("Trying to index empty Sub Matrix"),
+            SubMatrix::Filled {
+                parent,
+                rows_window_from_parent,
+                cols_window_from_parent,
+            } => {
+                let row = index.0 + rows_window_from_parent.0;
+                let column = index.1 + cols_window_from_parent.0;
+                &parent[(row, column)]
+            }
+        }
+    }
+}
+
+impl<'a> Mul<i64> for &SubMatrix<'a> {
+    type Output = Matrix;
+
+    fn mul(self, rhs: i64) -> Self::Output {
+        let rows = self.rows();
+        let cols = self.cols();
+        let mut result = self.materialize();
+        for i in 0..rows {
+            for j in 0..cols {
+                result[(i, j)] *= rhs;
+            }
+        }
+        result
+    }
+}
+
+impl<'a> Mul<&SubMatrix<'a>> for i64 {
+    type Output = Matrix;
+
+    fn mul(self, rhs: &SubMatrix) -> Self::Output {
+        rhs * self
     }
 }
 
@@ -103,16 +126,23 @@ impl<'a> Sub<Self> for &SubMatrix<'a> {
     type Output = MatrixOperationResult;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        if self.rows() != rhs.rows() || self.cols() != rhs.cols() {
-            return Err(SubtractionDimensionsDontMatch);
-        }
-        let mut result = self.materialize();
-        for i in 0..self.rows() {
-            for j in 0..self.cols() {
-                result[(i, j)] -= rhs[(i, j)];
+        match (self, rhs) {
+            (SubMatrix::Empty, SubMatrix::Filled { .. }) => Ok(-1 * rhs),
+            (SubMatrix::Filled { .. }, SubMatrix::Empty) => Ok(self.materialize()),
+            (SubMatrix::Empty, SubMatrix::Empty) => Ok(Matrix::empty()),
+            (SubMatrix::Filled { .. }, SubMatrix::Filled { .. }) => {
+                if self.rows() != rhs.rows() || self.cols() != rhs.cols() {
+                    return Err(SubtractionDimensionsDontMatch);
+                }
+                let mut result = self.materialize();
+                for i in 0..self.rows() {
+                    for j in 0..self.cols() {
+                        result[(i, j)] -= rhs[(i, j)];
+                    }
+                }
+                Ok(result)
             }
         }
-        Ok(result)
     }
 }
 
@@ -120,58 +150,73 @@ impl<'a> Add<Self> for &SubMatrix<'a> {
     type Output = MatrixOperationResult;
 
     fn add(self, rhs: Self) -> Self::Output {
-        if self.rows() != rhs.rows() || self.cols() != rhs.cols() {
-            return Err(AdditionDimensionsDontMatch);
-        }
-        let mut result = self.materialize();
-        for i in 0..self.rows() {
-            for j in 0..self.cols() {
-                result[(i, j)] += rhs[(i, j)];
+        match (self, rhs) {
+            (SubMatrix::Empty, SubMatrix::Filled { .. }) => Ok(rhs.materialize()),
+            (SubMatrix::Filled { .. }, SubMatrix::Empty) => Ok(self.materialize()),
+            (SubMatrix::Empty, SubMatrix::Empty) => Ok(Matrix::empty()),
+            (SubMatrix::Filled { .. }, SubMatrix::Filled { .. }) => {
+                if self.rows() != rhs.rows() || self.cols() != rhs.cols() {
+                    return Err(AdditionDimensionsDontMatch);
+                }
+                let mut result = self.materialize();
+                for i in 0..self.rows() {
+                    for j in 0..self.cols() {
+                        result[(i, j)] += rhs[(i, j)];
+                    }
+                }
+                Ok(result)
             }
         }
-        Ok(result)
     }
 }
 
 impl<'a> SubMatrix<'a> {
+    #[allow(dead_code)]
     fn mult_strassen(&self, rhs: &SubMatrix) -> MatrixOperationResult {
-        if self.rows() == 1 {
-            let scalar: i64 = self[(0, 0)] * rhs[(0, 0)];
-            return Ok(Matrix::scalar(scalar));
+        match (self, rhs) {
+            (SubMatrix::Empty, SubMatrix::Filled { .. }) => Ok(Matrix::empty()),
+            (SubMatrix::Filled { .. }, SubMatrix::Empty) => Ok(Matrix::empty()),
+            (SubMatrix::Empty, SubMatrix::Empty) => Ok(Matrix::empty()),
+            (SubMatrix::Filled { .. }, SubMatrix::Filled { .. }) => {
+                if self.rows() == 1 {
+                    let scalar: i64 = self[(0, 0)] * rhs[(0, 0)];
+                    return Ok(Matrix::scalar(scalar));
+                }
+
+                let half = self.rows() / 2;
+
+                let [a, b, c, d] = &self.split_in_4_parts(half, half);
+                let [e, f, g, h] = &self.split_in_4_parts(half, half);
+
+                let p1 = a.mult_strassen(&(f - h)?.as_sub_matrix())?;
+                let p2 = (a + b)?.as_sub_matrix().mult_strassen(h)?;
+                let p3 = (c + d)?.as_sub_matrix().mult_strassen(e)?;
+                let p4 = d.mult_strassen(&(g - e)?.as_sub_matrix())?;
+                let p5 = (a + d)?
+                    .as_sub_matrix()
+                    .mult_strassen(&(e + h)?.as_sub_matrix())?;
+                let p6 = (b - d)?
+                    .as_sub_matrix()
+                    .mult_strassen(&(g + h)?.as_sub_matrix())?;
+                let p7 = (a - c)?
+                    .as_sub_matrix()
+                    .mult_strassen(&(e + f)?.as_sub_matrix())?;
+
+                let [left_top, right_top, left_bottom, right_bottom] = [
+                    (&(&p5 + &p4)? - &(&p2 - &p6)?)?,
+                    (&p1 + &p2)?,
+                    (&p3 + &p4)?,
+                    (&(&p1 + &p5)? - &(&p3 + &p7)?)?,
+                ];
+
+                Ok(Matrix::assemble_from_four_pieces(
+                    left_top,
+                    right_top,
+                    left_bottom,
+                    right_bottom,
+                ))
+            }
         }
-
-        let half = self.rows() / 2;
-
-        let [a, b, c, d] = &self.split_in_4_parts(half, half);
-        let [e, f, g, h] = &self.split_in_4_parts(half, half);
-
-        let p1 = a.mult_strassen(&(f - h)?.as_sub_matrix())?;
-        let p2 = (a + b)?.as_sub_matrix().mult_strassen(h)?;
-        let p3 = (c + d)?.as_sub_matrix().mult_strassen(e)?;
-        let p4 = d.mult_strassen(&(g - e)?.as_sub_matrix())?;
-        let p5 = (a + d)?
-            .as_sub_matrix()
-            .mult_strassen(&(e + h)?.as_sub_matrix())?;
-        let p6 = (b - d)?
-            .as_sub_matrix()
-            .mult_strassen(&(g + h)?.as_sub_matrix())?;
-        let p7 = (a - c)?
-            .as_sub_matrix()
-            .mult_strassen(&(e + f)?.as_sub_matrix())?;
-
-        let [left_top, right_top, left_bottom, right_bottom] = [
-            (&(&p5 + &p4)? - &(&p2 - &p6)?)?,
-            (&p1 + &p2)?,
-            (&p3 + &p4)?,
-            (&(&p1 + &p5)? - &(&p3 + &p7)?)?,
-        ];
-
-        Ok(Matrix::assemble_from_four_pieces(
-            left_top,
-            right_top,
-            left_bottom,
-            right_bottom,
-        ))
     }
 
     fn multiply_baseline(&self, rhs: &SubMatrix) -> Matrix {
@@ -188,37 +233,73 @@ impl<'a> SubMatrix<'a> {
     }
 
     pub(crate) fn split_horizontally(&self, at_col: usize) -> [SubMatrix<'a>; 2] {
-        let cols = self.cols();
+        match self {
+            SubMatrix::Empty => [SubMatrix::Empty, SubMatrix::Empty],
+            SubMatrix::Filled {
+                rows_window_from_parent,
+                parent,
+                ..
+            } => {
+                let cols = self.cols();
 
-        let left = SubMatrix {
-            rows_window_from_parent: self.rows_window_from_parent.clone(),
-            cols_window_from_parent: MatrixWindow(0, at_col - 1),
-            parent: self.parent,
-        };
-        let right = SubMatrix {
-            rows_window_from_parent: self.rows_window_from_parent.clone(),
-            cols_window_from_parent: MatrixWindow(at_col, cols - 1),
-            parent: self.parent,
-        };
+                let left = if at_col >= 1 {
+                    SubMatrix::Filled {
+                        rows_window_from_parent: rows_window_from_parent.clone(),
+                        cols_window_from_parent: MatrixWindow(0, at_col - 1),
+                        parent,
+                    }
+                } else {
+                    SubMatrix::Empty
+                };
 
-        [left, right]
+                let right = if cols >= at_col + 1 {
+                    SubMatrix::Filled {
+                        rows_window_from_parent: rows_window_from_parent.clone(),
+                        cols_window_from_parent: MatrixWindow(at_col, cols - 1),
+                        parent,
+                    }
+                } else {
+                    SubMatrix::Empty
+                };
+
+                [left, right]
+            }
+        }
     }
 
     pub(crate) fn split_vertically(&self, at_row: usize) -> [SubMatrix<'a>; 2] {
-        let rows = self.rows();
+        match self {
+            SubMatrix::Empty => [SubMatrix::Empty, SubMatrix::Empty],
+            SubMatrix::Filled {
+                cols_window_from_parent,
+                parent,
+                ..
+            } => {
+                let rows = self.rows();
 
-        let top = SubMatrix {
-            rows_window_from_parent: MatrixWindow(0, at_row - 1),
-            cols_window_from_parent: self.cols_window_from_parent.clone(),
-            parent: self.parent,
-        };
-        let bottom = SubMatrix {
-            rows_window_from_parent: MatrixWindow(at_row, rows - 1),
-            cols_window_from_parent: self.cols_window_from_parent.clone(),
-            parent: self.parent,
-        };
+                let top = if at_row >= 1 {
+                    SubMatrix::Filled {
+                        rows_window_from_parent: MatrixWindow(0, at_row - 1),
+                        cols_window_from_parent: cols_window_from_parent.clone(),
+                        parent,
+                    }
+                } else {
+                    SubMatrix::Empty
+                };
 
-        [top, bottom]
+                let bottom = if rows >= at_row + 1 {
+                    SubMatrix::Filled {
+                        rows_window_from_parent: MatrixWindow(at_row, rows - 1),
+                        cols_window_from_parent: cols_window_from_parent.clone(),
+                        parent,
+                    }
+                } else {
+                    SubMatrix::Empty
+                };
+
+                [top, bottom]
+            }
+        }
     }
 
     pub(crate) fn split_in_4_parts(&'a self, at_row: usize, at_col: usize) -> [SubMatrix<'a>; 4] {
@@ -237,9 +318,17 @@ impl<'a> Mul<Self> for &SubMatrix<'a> {
     type Output = MatrixOperationResult;
 
     fn mul(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Empty, _) => return Ok(Matrix::empty()),
+            (_, Empty) => return Ok(Matrix::empty()),
+            (_, _) => {}
+        }
+
         if self.cols() != rhs.rows() {
             return Err(MultiplicationDimensionsDontMatch);
         }
+
+        return Ok(self.multiply_baseline(rhs));
 
         let left_rows = self.rows();
         let inner_multiplication_index = self.cols();
@@ -249,9 +338,20 @@ impl<'a> Mul<Self> for &SubMatrix<'a> {
             return Ok(self.multiply_baseline(&rhs));
         }
 
+        if left_rows == 0 || inner_multiplication_index == 0 || right_cols == 0 {
+            return Ok(Matrix::empty());
+        }
+
         let lesser_dimension = left_rows.min(inner_multiplication_index).min(right_cols);
         let lesser_dimension_log = lesser_dimension.ilog2();
         let dimension_to_split = 2u32.pow(lesser_dimension_log) as usize;
+
+        if left_rows == dimension_to_split
+            && inner_multiplication_index == dimension_to_split
+            && right_cols == dimension_to_split
+        {
+            return Ok(self.multiply_baseline(rhs));
+        }
 
         let [lhs_left_top, lhs_right_top, lhs_left_bot, lhs_right_bot] =
             self.split_in_4_parts(dimension_to_split, dimension_to_split);
@@ -259,8 +359,7 @@ impl<'a> Mul<Self> for &SubMatrix<'a> {
         let [rhs_left_top, rhs_right_top, rhs_left_bot, rhs_right_bot] =
             rhs.split_in_4_parts(dimension_to_split, dimension_to_split);
 
-        let left_top =
-            (&lhs_left_top.mult_strassen(&rhs_left_top)? + &(&lhs_right_top * &rhs_left_bot)?)?;
+        let left_top = (&(&lhs_left_top * &rhs_left_top)? + &(&lhs_right_top * &rhs_left_bot)?)?;
 
         let right_top = (&(&lhs_left_top * &rhs_right_top)? + &(&lhs_right_top * &rhs_right_bot)?)?;
 

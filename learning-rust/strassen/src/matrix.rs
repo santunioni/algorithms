@@ -71,19 +71,16 @@ impl Matrix {
         identity
     }
 
-    pub(crate) fn sub_matrix(
-        &self,
-        rows_window: MatrixWindow,
-        cols_window: MatrixWindow,
-    ) -> SubMatrix {
-        SubMatrix::new(&self, rows_window, cols_window)
-    }
-
     pub(crate) fn as_sub_matrix(&self) -> SubMatrix {
-        self.sub_matrix(
-            MatrixWindow(0, self.rows - 1),
-            MatrixWindow(0, self.cols - 1),
-        )
+        if self.rows == 0 || self.cols == 0 {
+            SubMatrix::Empty
+        } else {
+            SubMatrix::Filled {
+                cols_window_from_parent: MatrixWindow(0, self.cols - 1),
+                rows_window_from_parent: MatrixWindow(0, self.rows - 1),
+                parent: &self,
+            }
+        }
     }
 }
 
