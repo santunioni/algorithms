@@ -17,6 +17,14 @@ impl Matrix {
         }
     }
 
+    pub fn empty() -> Self {
+        Matrix {
+            rows: 0,
+            cols: 0,
+            data: Vec::with_capacity(0),
+        }
+    }
+
     pub fn identity(size: usize) -> Self {
         let mut identity = Matrix::zeroes(size, size);
         for i in 0..size {
@@ -25,11 +33,15 @@ impl Matrix {
         identity
     }
 
-    pub fn sub_matrix(&self, rows_window: MatrixWindow, cols_window: MatrixWindow) -> SubMatrix {
+    pub(crate) fn sub_matrix(
+        &self,
+        rows_window: MatrixWindow,
+        cols_window: MatrixWindow,
+    ) -> SubMatrix {
         SubMatrix::new(&self, rows_window, cols_window)
     }
 
-    pub fn as_sub_matrix(&self) -> SubMatrix {
+    pub(crate) fn as_sub_matrix(&self) -> SubMatrix {
         self.sub_matrix(
             MatrixWindow(0, self.rows - 1),
             MatrixWindow(0, self.cols - 1),

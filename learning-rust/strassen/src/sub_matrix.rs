@@ -2,11 +2,11 @@ use crate::matrix::Matrix;
 use std::ops::{Add, Index, Mul, Sub};
 
 #[derive(Clone, Debug)]
-pub struct MatrixWindow(pub usize, pub usize);
+pub struct MatrixWindow(pub(crate) usize, pub(crate) usize);
 
 impl MatrixWindow {
     fn size(&self) -> usize {
-        self.1 - self.0 + 1
+        1 + self.1 - self.0
     }
 }
 
@@ -19,7 +19,7 @@ impl Add<Self> for MatrixWindow {
 }
 
 #[derive(Clone, Debug)]
-pub struct SubMatrix<'a> {
+pub(crate) struct SubMatrix<'a> {
     rows_window_from_parent: MatrixWindow,
     cols_window_from_parent: MatrixWindow,
     parent: &'a Matrix,
@@ -43,12 +43,20 @@ impl<'a> SubMatrix<'a> {
     }
 
     pub(crate) fn materialize(&self) -> Matrix {
-        let mut matrix = Matrix::zeroes(self.rows(), self.cols());
-        for row in 0..self.rows() {
-            for col in 0..self.cols() {
+        let rows = self.rows();
+        let cols = self.cols();
+
+        if rows == 0 || cols == 0 {
+            return Matrix::empty();
+        }
+
+        let mut matrix = Matrix::zeroes(rows, cols);
+        for row in 0..rows {
+            for col in 0..cols {
                 matrix[(row, col)] = self[(row, col)]
             }
         }
+
         matrix
     }
 }
@@ -115,38 +123,49 @@ impl<'a> SubMatrix<'a> {
         Ok(result)
     }
 
-    pub(crate) fn divide_in_4_parts(
-        &'a self,
-        first_matrix_finishes_at_row: usize,
-        first_matrix_finishes_at_col: usize,
-    ) -> [SubMatrix<'a>; 4] {
-        //! Matrix split order is defined in the picture
-        //! https://www.interviewbit.com/blog/wp-content/uploads/2021/12/New-quadrants-768x482.png
-        let rows = self.rows();
+    pub(crate) fn split_horizontally(&self, at_col: usize) -> (SubMatrix<'a>, SubMatrix<'a>) {
         let cols = self.cols();
 
-        let a = SubMatrix {
-            rows_window_from_parent: MatrixWindow(0, first_matrix_finishes_at_row - 1),
-            cols_window_from_parent: MatrixWindow(0, first_matrix_finishes_at_col - 1),
+        let left = SubMatrix {
+            rows_window_from_parent: self.rows_window_from_parent.clone(),
+            cols_window_from_parent: MatrixWindow(0, at_col - 1),
             parent: self.parent,
         };
-        let b = SubMatrix {
-            rows_window_from_parent: MatrixWindow(0, first_matrix_finishes_at_row - 1),
-            cols_window_from_parent: MatrixWindow(first_matrix_finishes_at_col, cols - 1),
-            parent: self.parent,
-        };
-        let c = SubMatrix {
-            rows_window_from_parent: MatrixWindow(first_matrix_finishes_at_row, rows - 1),
-            cols_window_from_parent: MatrixWindow(0, first_matrix_finishes_at_col - 1),
-            parent: self.parent,
-        };
-        let d = SubMatrix {
-            rows_window_from_parent: MatrixWindow(first_matrix_finishes_at_row, rows - 1),
-            cols_window_from_parent: MatrixWindow(first_matrix_finishes_at_col, cols - 1),
+        let right = SubMatrix {
+            rows_window_from_parent: self.rows_window_from_parent.clone(),
+            cols_window_from_parent: MatrixWindow(at_col, cols - 1),
             parent: self.parent,
         };
 
-        [a, b, c, d]
+        (left, right)
+    }
+
+    pub(crate) fn split_vertically(&self, at_row: usize) -> (SubMatrix<'a>, SubMatrix<'a>) {
+        let rows = self.rows();
+
+        let top = SubMatrix {
+            rows_window_from_parent: MatrixWindow(0, at_row - 1),
+            cols_window_from_parent: self.cols_window_from_parent.clone(),
+            parent: self.parent,
+        };
+        let bottom = SubMatrix {
+            rows_window_from_parent: MatrixWindow(at_row, rows - 1),
+            cols_window_from_parent: self.cols_window_from_parent.clone(),
+            parent: self.parent,
+        };
+
+        (top, bottom)
+    }
+
+    pub(crate) fn split_in_4_parts(&'a self, at_row: usize, at_col: usize) -> [SubMatrix<'a>; 4] {
+        //! Matrix split order is defined in the picture
+        //! https://www.interviewbit.com/blog/wp-content/uploads/2021/12/New-quadrants-768x482.png
+        let (left, right) = self.split_horizontally(at_col);
+        let ((left_top, left_bottom), (right_top, right_bottom)) = (
+            left.split_vertically(at_row),
+            right.split_vertically(at_row),
+        );
+        [left_top, right_top, left_bottom, right_bottom]
     }
 }
 
