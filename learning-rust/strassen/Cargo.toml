@@ -8,3 +8,5 @@ description = "Strassen algorithm for matrix multiplication"
 
 [dev-dependencies]
 
+[dependencies]
+thiserror = "2.0.12"

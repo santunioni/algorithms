@@ -1,5 +1,23 @@
 use crate::matrix::Matrix;
+use crate::sub_matrix::MatrixMultiplicationError::MatricesDimensionDoNotMatch;
+use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, Index, Mul, Sub};
+use thiserror::Error;
+
+pub type MatrixIndex = (usize, usize);
+pub type MatrixOperationResult = Result<Matrix, MatrixMultiplicationError>;
+
+#[derive(Error, Debug)]
+pub enum MatrixMultiplicationError {
+    MatricesDimensionDoNotMatch,
+}
+
+impl Display for MatrixMultiplicationError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(&self, f)?;
+        Ok(())
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct MatrixWindow(pub(crate) usize, pub(crate) usize);
@@ -76,7 +94,7 @@ impl<'a> Sub<Self> for &SubMatrix<'a> {
 
     fn sub(self, rhs: Self) -> Self::Output {
         if self.rows() != rhs.rows() || self.cols() != rhs.cols() {
-            return Err("Matrices dimensions do not match");
+            return Err(MatricesDimensionDoNotMatch);
         }
         let mut result = self.materialize();
         for i in 0..self.rows() {
@@ -93,7 +111,7 @@ impl<'a> Add<Self> for &SubMatrix<'a> {
 
     fn add(self, rhs: Self) -> Self::Output {
         if self.rows() != rhs.rows() || self.cols() != rhs.cols() {
-            return Err("Matrices dimensions do not match");
+            return Err(MatricesDimensionDoNotMatch);
         }
         let mut result = self.materialize();
         for i in 0..self.rows() {
@@ -108,7 +126,7 @@ impl<'a> Add<Self> for &SubMatrix<'a> {
 impl<'a> SubMatrix<'a> {
     fn multiply_baseline(&self, rhs: &SubMatrix) -> MatrixOperationResult {
         if self.cols() != rhs.rows() {
-            return Err("Matrices dimensions do not match for multiplication");
+            return Err(MatricesDimensionDoNotMatch);
         }
 
         let mut result = Matrix::zeroes(self.rows(), rhs.cols());
@@ -174,7 +192,7 @@ impl<'a> Mul<Self> for &SubMatrix<'a> {
 
     fn mul(self, rhs: Self) -> Self::Output {
         if self.cols() != rhs.rows() {
-            return Err("Matrices dimensions do not match for multiplication");
+            return Err(MatricesDimensionDoNotMatch);
         }
 
         match (self.rows(), self.cols(), rhs.cols()) {
@@ -198,6 +216,3 @@ impl<'a> Mul<Self> for &SubMatrix<'a> {
         }
     }
 }
-
-pub type MatrixIndex = (usize, usize);
-pub type MatrixOperationResult = Result<Matrix, &'static str>;
