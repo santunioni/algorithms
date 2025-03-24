@@ -2,18 +2,31 @@ use crate::matrix::Matrix;
 use std::ops::{Add, Index, Mul, Sub};
 
 #[derive(Clone, Debug)]
+pub struct MatrixWindow(pub usize, pub usize);
+
+impl MatrixWindow {
+    fn size(&self) -> usize {
+        self.1 - self.0 + 1
+    }
+}
+
+impl Add<Self> for MatrixWindow {
+    type Output = MatrixWindow;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        MatrixWindow(self.0 + rhs.0, self.1 + rhs.1)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct SubMatrix<'a> {
-    rows_window_from_parent: (usize, usize),
-    cols_window_from_parent: (usize, usize),
+    rows_window_from_parent: MatrixWindow,
+    cols_window_from_parent: MatrixWindow,
     parent: &'a Matrix,
 }
 
 impl<'a> SubMatrix<'a> {
-    pub fn new(
-        matrix: &Matrix,
-        rows_window: (usize, usize),
-        cols_window: (usize, usize),
-    ) -> SubMatrix {
+    pub fn new(matrix: &Matrix, rows_window: MatrixWindow, cols_window: MatrixWindow) -> SubMatrix {
         SubMatrix {
             cols_window_from_parent: cols_window,
             rows_window_from_parent: rows_window,
@@ -22,15 +35,21 @@ impl<'a> SubMatrix<'a> {
     }
 
     fn rows(&self) -> usize {
-        self.rows_window_from_parent.1 - self.rows_window_from_parent.0
+        self.rows_window_from_parent.size()
     }
 
     fn cols(&self) -> usize {
-        self.cols_window_from_parent.1 - self.cols_window_from_parent.0
+        self.cols_window_from_parent.size()
     }
 
-    fn materialize(&self) -> Matrix {
-        self.parent.clone()
+    pub(crate) fn materialize(&self) -> Matrix {
+        let mut matrix = Matrix::zeroes(self.rows(), self.cols());
+        for row in 0..self.rows() {
+            for col in 0..self.cols() {
+                matrix[(row, col)] = self[(row, col)]
+            }
+        }
+        matrix
     }
 }
 
@@ -96,43 +115,39 @@ impl<'a> SubMatrix<'a> {
         Ok(result)
     }
 
-    // fn divide_in_4_parts(&'a self, at_col: usize, at_row: usize) -> [SubMatrix<'a>; 4] {
-    //     //! Matrix split order is defined in the picture
-    //     //! https://www.interviewbit.com/blog/wp-content/uploads/2021/12/New-quadrants-768x482.png
-    //     [
-    //         SubMatrix {
-    //             cols: at_col,
-    //             rows: at_row,
-    //             data: &[],
-    //         },
-    //         SubMatrix {
-    //             cols: self.cols - at_col,
-    //             rows: at_row,
-    //             data: &[],
-    //         },
-    //         SubMatrix {
-    //             cols: at_col,
-    //             rows: self.rows - at_row,
-    //             data: &[],
-    //         },
-    //         SubMatrix {
-    //             cols: self.cols - at_col,
-    //             rows: self.rows - at_row,
-    //             data: &[],
-    //         },
-    //     ]
-    // }
+    pub(crate) fn divide_in_4_parts(
+        &'a self,
+        first_matrix_finishes_at_row: usize,
+        first_matrix_finishes_at_col: usize,
+    ) -> [SubMatrix<'a>; 4] {
+        //! Matrix split order is defined in the picture
+        //! https://www.interviewbit.com/blog/wp-content/uploads/2021/12/New-quadrants-768x482.png
+        let rows = self.rows();
+        let cols = self.cols();
 
-    // fn strassen_split_with(&self, rhs: &Self) -> [SubMatrix; 8] {
-    //     let a_cols = self.cols / 2;
-    //     let b_cols = self.cols - a_cols;
-    //     let a_rows = self.rows / 2;
-    //     let c_rows = self.rows - a_rows;
-    //
-    //     let e_cols = rhs.cols / 2;
-    //     let f_cols = rhs.cols - e_cols;
-    //     []
-    // }
+        let a = SubMatrix {
+            rows_window_from_parent: MatrixWindow(0, first_matrix_finishes_at_row - 1),
+            cols_window_from_parent: MatrixWindow(0, first_matrix_finishes_at_col - 1),
+            parent: self.parent,
+        };
+        let b = SubMatrix {
+            rows_window_from_parent: MatrixWindow(0, first_matrix_finishes_at_row - 1),
+            cols_window_from_parent: MatrixWindow(first_matrix_finishes_at_col, cols - 1),
+            parent: self.parent,
+        };
+        let c = SubMatrix {
+            rows_window_from_parent: MatrixWindow(first_matrix_finishes_at_row, rows - 1),
+            cols_window_from_parent: MatrixWindow(0, first_matrix_finishes_at_col - 1),
+            parent: self.parent,
+        };
+        let d = SubMatrix {
+            rows_window_from_parent: MatrixWindow(first_matrix_finishes_at_row, rows - 1),
+            cols_window_from_parent: MatrixWindow(first_matrix_finishes_at_col, cols - 1),
+            parent: self.parent,
+        };
+
+        [a, b, c, d]
+    }
 }
 
 impl<'a> Mul<Self> for &SubMatrix<'a> {

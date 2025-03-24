@@ -1,4 +1,4 @@
-use crate::sub_matrix::{MatrixIndex, MatrixOperationResult, SubMatrix};
+use crate::sub_matrix::{MatrixIndex, MatrixOperationResult, MatrixWindow, SubMatrix};
 use std::ops::{Add, Index, IndexMut, Mul, Sub};
 
 #[derive(Clone, Debug)]
@@ -25,16 +25,15 @@ impl Matrix {
         identity
     }
 
-    pub fn sub_matrix(
-        &self,
-        rows_window: (usize, usize),
-        cols_window: (usize, usize),
-    ) -> SubMatrix {
+    pub fn sub_matrix(&self, rows_window: MatrixWindow, cols_window: MatrixWindow) -> SubMatrix {
         SubMatrix::new(&self, rows_window, cols_window)
     }
 
     pub fn as_sub_matrix(&self) -> SubMatrix {
-        self.sub_matrix((0, self.rows), (0, self.cols))
+        self.sub_matrix(
+            MatrixWindow(0, self.rows - 1),
+            MatrixWindow(0, self.cols - 1),
+        )
     }
 }
 
