@@ -179,17 +179,20 @@ impl<'a> Mul<Self> for &SubMatrix<'a> {
 
         match (self.rows(), self.cols(), rhs.cols()) {
             (self_rows, self_cols, other_cols)
-                if self_rows <= 2 || self_cols <= 2 || other_cols <= 2 =>
+                if self_rows == 1 || self_cols == 1 || other_cols == 1 =>
             {
                 self.multiply_baseline(&rhs)
             }
-            (_self_rows, _self_cols, _other_cols) => {
+            (left_rows, inner_mult_size, right_cols) => {
                 // Matrix names are defined in the picture
                 // https://www.interviewbit.com/blog/wp-content/uploads/2021/12/New-quadrants-768x482.png
                 // let [a, b, c, d, e, f, g, h] = self.strassen_split(rhs);
                 // // let p_1 =
                 //
                 // // Change to Strassen
+                let dimension_to_split =
+                    2u32.pow(left_rows.min(inner_mult_size).min(right_cols).ilog2());
+                println!("dimension_to_split={dimension_to_split}");
                 self.multiply_baseline(&rhs)
             }
         }
