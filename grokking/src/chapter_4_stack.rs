@@ -1,17 +1,17 @@
-struct SinglyLinkedNode<T> {
+struct Node<T> {
     item: T,
     next: Link<T>,
 }
 
-type Link<T> = Option<Box<SinglyLinkedNode<T>>>;
+type Link<T> = Option<Box<Node<T>>>;
 
-pub struct SinglyLinkedList<T> {
+pub struct Stack<T> {
     head: Link<T>,
 }
 
-impl<T> SinglyLinkedList<T> {
-    pub fn empty() -> SinglyLinkedList<T> {
-        SinglyLinkedList { head: None }
+impl<T> Stack<T> {
+    pub fn empty() -> Self {
+        Stack { head: None }
     }
 
     fn pop_head_node(&mut self) -> Link<T> {
@@ -26,7 +26,7 @@ impl<T> SinglyLinkedList<T> {
     }
 
     pub fn push_head(&mut self, item: T) {
-        self.head = Some(Box::new(SinglyLinkedNode {
+        self.head = Some(Box::new(Node {
             item,
             next: self.pop_head_node(),
         }));
@@ -37,7 +37,7 @@ impl<T> SinglyLinkedList<T> {
     }
 }
 
-impl<T> Drop for SinglyLinkedList<T> {
+impl<T> Drop for Stack<T> {
     fn drop(&mut self) {
         while self.pop_head_node().is_some() {}
     }
@@ -45,11 +45,11 @@ impl<T> Drop for SinglyLinkedList<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::chapter_4_singly_linked_list::SinglyLinkedList;
+    use crate::chapter_4_stack::Stack;
 
     #[test]
     fn should_add_first_and_pop_first() {
-        let mut list = SinglyLinkedList::empty();
+        let mut list = Stack::empty();
 
         list.push_head(2);
         list.push_head(1);
