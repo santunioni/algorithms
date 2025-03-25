@@ -33,7 +33,7 @@ impl<T> SinglyLinkedList<T> {
     }
 
     pub fn pop_head(&mut self) -> Option<T> {
-        self.pop_head_node().take().map(|v| v.item)
+        self.pop_head_node().map(|v| v.item)
     }
 }
 
