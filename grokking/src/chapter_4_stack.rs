@@ -47,15 +47,15 @@ impl<T> Drop for Stack<T> {
     }
 }
 
-pub struct IntoIter<T>(Stack<T>);
+pub struct Drain<T>(Stack<T>);
 
 impl<T> Stack<T> {
-    pub fn into_iter(self) -> IntoIter<T> {
-        IntoIter(self)
+    pub fn drain(self) -> Drain<T> {
+        Drain(self)
     }
 }
 
-impl<T> Iterator for IntoIter<T> {
+impl<T> Iterator for Drain<T> {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
         self.0.pop_head()
@@ -106,6 +106,6 @@ mod tests {
         stack.push_head(2);
         stack.push_head(1);
 
-        assert_eq!(stack.into_iter().collect::<Vec<i32>>(), vec![1, 2])
+        assert_eq!(stack.drain().collect::<Vec<i32>>(), vec![1, 2])
     }
 }
