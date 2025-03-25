@@ -39,6 +39,10 @@ impl<T> Stack<T> {
     pub fn pop_head(&mut self) -> Option<T> {
         self.pop_head_node().map(|v| v.item)
     }
+
+    pub fn drain(self) -> Drain<T> {
+        Drain(self)
+    }
 }
 
 impl<T> Drop for Stack<T> {
@@ -48,12 +52,6 @@ impl<T> Drop for Stack<T> {
 }
 
 pub struct Drain<T>(Stack<T>);
-
-impl<T> Stack<T> {
-    pub fn drain(self) -> Drain<T> {
-        Drain(self)
-    }
-}
 
 impl<T> Iterator for Drain<T> {
     type Item = T;
