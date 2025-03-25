@@ -1,24 +1,24 @@
 use std::cell::{Ref, RefCell};
 use std::rc::{Rc, Weak};
 
-struct Node<T> {
+struct DoublyLinkedNode<T> {
     item: Option<T>,
     prev: Option<NodeWeakRef<T>>,
     next: Option<NodeStrongRef<T>>,
 }
 
-type NodeStrongRef<T> = Rc<RefCell<Node<T>>>;
-type NodeWeakRef<T> = Weak<RefCell<Node<T>>>;
+type NodeStrongRef<T> = Rc<RefCell<DoublyLinkedNode<T>>>;
+type NodeWeakRef<T> = Weak<RefCell<DoublyLinkedNode<T>>>;
 
-impl<T> Into<NodeStrongRef<T>> for Node<T> {
+impl<T> Into<NodeStrongRef<T>> for DoublyLinkedNode<T> {
     fn into(self) -> NodeStrongRef<T> {
         Rc::new(RefCell::new(self))
     }
 }
 
-impl<T> Node<T> {
-    fn new(item: T) -> Node<T> {
-        Node {
+impl<T> DoublyLinkedNode<T> {
+    fn new(item: T) -> DoublyLinkedNode<T> {
+        DoublyLinkedNode {
             item: Some(item),
             prev: None,
             next: None,
@@ -26,7 +26,7 @@ impl<T> Node<T> {
     }
 
     fn pop(&mut self) -> (Option<NodeWeakRef<T>>, Option<T>, Option<NodeStrongRef<T>>) {
-        let Node { item, prev, next } = self;
+        let DoublyLinkedNode { item, prev, next } = self;
 
         let prev = if let Some(prev) = prev.take() {
             prev.upgrade()
@@ -54,7 +54,7 @@ impl<T> Node<T> {
     fn append(self_ref: NodeStrongRef<T>, item: T) -> NodeWeakRef<T> {
         let mut self_ref_mut = self_ref.borrow_mut();
         let old_next = self_ref_mut.next.take();
-        let new_cell = Node {
+        let new_cell = DoublyLinkedNode {
             item: Some(item),
             prev: Some(Rc::downgrade(&self_ref)),
             next: old_next,
@@ -67,7 +67,7 @@ impl<T> Node<T> {
     fn prepend(self_ref: NodeStrongRef<T>, item: T) -> NodeStrongRef<T> {
         let mut self_ref_mut = self_ref.borrow_mut();
         let old_prev = self_ref_mut.prev.take();
-        let new_cell = Node {
+        let new_cell = DoublyLinkedNode {
             item: Some(item),
             next: Some(Rc::clone(&self_ref)),
             prev: old_prev,
@@ -78,28 +78,28 @@ impl<T> Node<T> {
     }
 }
 
-pub struct LinkedList<T> {
+pub struct DoublyLinkedList<T> {
     len: u64,
     first: Option<NodeStrongRef<T>>,
     last: Option<NodeWeakRef<T>>,
 }
 
 pub struct Drain<T> {
-    list: LinkedList<T>,
+    list: DoublyLinkedList<T>,
 }
 
 impl<T> Drain<T> {
-    fn new(list: LinkedList<T>) -> Self {
+    fn new(list: DoublyLinkedList<T>) -> Self {
         Drain { list }
     }
 }
 
 pub struct LinkedListIterator<'a, T> {
-    curr: Option<Ref<'a, Node<T>>>,
+    curr: Option<Ref<'a, DoublyLinkedNode<T>>>,
 }
 
 impl<'a, T> LinkedListIterator<'a, T> {
-    fn new(list: &LinkedList<T>) -> LinkedListIterator<T> {
+    fn new(list: &DoublyLinkedList<T>) -> LinkedListIterator<T> {
         LinkedListIterator {
             curr: list.first.as_ref().map(|first| first.borrow()),
         }
@@ -129,20 +129,20 @@ impl<T> Iterator for Drain<T> {
     }
 }
 
-impl<T> LinkedList<T> {
-    pub fn empty() -> LinkedList<T> {
-        LinkedList {
+impl<T> DoublyLinkedList<T> {
+    pub fn empty() -> DoublyLinkedList<T> {
+        DoublyLinkedList {
             len: 0,
             first: None,
             last: None,
         }
     }
 
-    fn get_first(&self) -> Option<Ref<Node<T>>> {
+    fn get_first(&self) -> Option<Ref<DoublyLinkedNode<T>>> {
         self.first.as_ref().map(|first| first.borrow())
     }
 
-    pub fn new(item: T) -> LinkedList<T> {
+    pub fn new(item: T) -> DoublyLinkedList<T> {
         let mut list = Self::empty();
         list.add_first(item);
         list
@@ -157,9 +157,9 @@ impl<T> LinkedList<T> {
     }
     pub fn add_first(&mut self, new_first: T) {
         self.first = Some(match self.first.take() {
-            Some(first) => Node::prepend(first, new_first),
+            Some(first) => DoublyLinkedNode::prepend(first, new_first),
             None => {
-                let cell = Node::new(new_first).into();
+                let cell = DoublyLinkedNode::new(new_first).into();
                 self.last = Some(Rc::downgrade(&cell));
                 cell
             }
@@ -176,9 +176,9 @@ impl<T> LinkedList<T> {
 
     pub fn add_last(&mut self, new_last: T) {
         self.last = Some(match self.last.take().and_then(|v| v.upgrade()) {
-            Some(last) => Node::append(last, new_last),
+            Some(last) => DoublyLinkedNode::append(last, new_last),
             None => {
-                let cell = Node::new(new_last).into();
+                let cell = DoublyLinkedNode::new(new_last).into();
                 self.first = Some(Rc::clone(&cell));
                 Rc::downgrade(&cell)
             }
