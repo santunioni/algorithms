@@ -14,20 +14,11 @@ impl<T> SinglyLinkedList<T> {
         SinglyLinkedList { head: None }
     }
 
-    pub fn new(item: T) -> SinglyLinkedList<T> {
-        let mut list = Self::empty();
-        list.push_head(item);
-        list
-    }
-
     fn pop_head_node(&mut self) -> Link<T> {
-        match self.head.take() {
-            None => None,
-            Some(mut head) => {
-                self.head = head.next.take();
-                Some(head)
-            }
-        }
+        self.head.take().map(|mut old_head| {
+            self.head = old_head.next.take();
+            old_head
+        })
     }
 
     fn peek_head(&self) -> Option<&T> {
