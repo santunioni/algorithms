@@ -1,24 +1,24 @@
 use std::cell::{Ref, RefCell};
 use std::rc::{Rc, Weak};
 
-struct DoublyLinkedNode<T> {
+struct Node<T> {
     item: Option<T>,
     prev: Option<NodeWeakRef<T>>,
     next: Option<NodeStrongRef<T>>,
 }
 
-type NodeStrongRef<T> = Rc<RefCell<DoublyLinkedNode<T>>>;
-type NodeWeakRef<T> = Weak<RefCell<DoublyLinkedNode<T>>>;
+type NodeStrongRef<T> = Rc<RefCell<Node<T>>>;
+type NodeWeakRef<T> = Weak<RefCell<Node<T>>>;
 
-impl<T> Into<NodeStrongRef<T>> for DoublyLinkedNode<T> {
+impl<T> Into<NodeStrongRef<T>> for Node<T> {
     fn into(self) -> NodeStrongRef<T> {
         Rc::new(RefCell::new(self))
     }
 }
 
-impl<T> DoublyLinkedNode<T> {
-    fn new(item: T) -> DoublyLinkedNode<T> {
-        DoublyLinkedNode {
+impl<T> Node<T> {
+    fn new(item: T) -> Node<T> {
+        Node {
             item: Some(item),
             prev: None,
             next: None,
@@ -26,7 +26,7 @@ impl<T> DoublyLinkedNode<T> {
     }
 
     fn pop(&mut self) -> (Option<NodeWeakRef<T>>, Option<T>, Option<NodeStrongRef<T>>) {
-        let DoublyLinkedNode { item, prev, next } = self;
+        let Node { item, prev, next } = self;
 
         let prev = if let Some(prev) = prev.take() {
             prev.upgrade()
@@ -54,7 +54,7 @@ impl<T> DoublyLinkedNode<T> {
     fn append(self_ref: NodeStrongRef<T>, item: T) -> NodeWeakRef<T> {
         let mut self_ref_mut = self_ref.borrow_mut();
         let old_next = self_ref_mut.next.take();
-        let new_cell = DoublyLinkedNode {
+        let new_cell = Node {
             item: Some(item),
             prev: Some(Rc::downgrade(&self_ref)),
             next: old_next,
@@ -67,7 +67,7 @@ impl<T> DoublyLinkedNode<T> {
     fn prepend(self_ref: NodeStrongRef<T>, item: T) -> NodeStrongRef<T> {
         let mut self_ref_mut = self_ref.borrow_mut();
         let old_prev = self_ref_mut.prev.take();
-        let new_cell = DoublyLinkedNode {
+        let new_cell = Node {
             item: Some(item),
             next: Some(Rc::clone(&self_ref)),
             prev: old_prev,
@@ -78,28 +78,26 @@ impl<T> DoublyLinkedNode<T> {
     }
 }
 
-pub struct DoublyLinkedList<T> {
+pub struct Deque<T> {
     len: u64,
     first: Option<NodeStrongRef<T>>,
     last: Option<NodeWeakRef<T>>,
 }
 
-pub struct Drain<T> {
-    list: DoublyLinkedList<T>,
-}
+pub struct Drain<T>(Deque<T>);
 
 impl<T> Drain<T> {
-    fn new(list: DoublyLinkedList<T>) -> Self {
-        Drain { list }
+    fn new(list: Deque<T>) -> Self {
+        Drain(list)
     }
 }
 
 pub struct DoublyLinkedListIterator<'a, T> {
-    curr: Option<Ref<'a, DoublyLinkedNode<T>>>,
+    curr: Option<Ref<'a, Node<T>>>,
 }
 
 impl<'a, T> DoublyLinkedListIterator<'a, T> {
-    fn new(list: &DoublyLinkedList<T>) -> DoublyLinkedListIterator<T> {
+    fn new(list: &Deque<T>) -> DoublyLinkedListIterator<T> {
         DoublyLinkedListIterator {
             curr: list.first.as_ref().map(|first| first.borrow()),
         }
@@ -125,24 +123,24 @@ impl<T> Iterator for Drain<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.list.pop_first()
+        self.0.pop_first()
     }
 }
 
-impl<T> DoublyLinkedList<T> {
-    pub fn empty() -> DoublyLinkedList<T> {
-        DoublyLinkedList {
+impl<T> Deque<T> {
+    pub fn empty() -> Deque<T> {
+        Deque {
             len: 0,
             first: None,
             last: None,
         }
     }
 
-    fn get_first(&self) -> Option<Ref<DoublyLinkedNode<T>>> {
+    fn get_first(&self) -> Option<Ref<Node<T>>> {
         self.first.as_ref().map(|first| first.borrow())
     }
 
-    pub fn new(item: T) -> DoublyLinkedList<T> {
+    pub fn new(item: T) -> Deque<T> {
         let mut list = Self::empty();
         list.add_first(item);
         list
@@ -157,9 +155,9 @@ impl<T> DoublyLinkedList<T> {
     }
     pub fn add_first(&mut self, new_first: T) {
         self.first = Some(match self.first.take() {
-            Some(first) => DoublyLinkedNode::prepend(first, new_first),
+            Some(first) => Node::prepend(first, new_first),
             None => {
-                let cell = DoublyLinkedNode::new(new_first).into();
+                let cell = Node::new(new_first).into();
                 self.last = Some(Rc::downgrade(&cell));
                 cell
             }
@@ -176,9 +174,9 @@ impl<T> DoublyLinkedList<T> {
 
     pub fn add_last(&mut self, new_last: T) {
         self.last = Some(match self.last.take().and_then(|v| v.upgrade()) {
-            Some(last) => DoublyLinkedNode::append(last, new_last),
+            Some(last) => Node::append(last, new_last),
             None => {
-                let cell = DoublyLinkedNode::new(new_last).into();
+                let cell = Node::new(new_last).into();
                 self.first = Some(Rc::clone(&cell));
                 Rc::downgrade(&cell)
             }
@@ -200,11 +198,11 @@ impl<T> DoublyLinkedList<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::chapter_4_doubly_linked_list::DoublyLinkedList;
+    use crate::chapter_4_deque::Deque;
 
     #[test]
     fn should_add_first_and_pop_first() {
-        let mut list = DoublyLinkedList::empty();
+        let mut list = Deque::empty();
 
         list.add_first(2);
         list.add_first(1);
@@ -215,7 +213,7 @@ mod tests {
 
     #[test]
     fn should_add_first_and_pop_last() {
-        let mut list = DoublyLinkedList::empty();
+        let mut list = Deque::empty();
 
         list.add_first(2);
         list.add_first(1);
@@ -226,7 +224,7 @@ mod tests {
 
     #[test]
     fn should_add_last_and_pop_first() {
-        let mut list = DoublyLinkedList::empty();
+        let mut list = Deque::empty();
 
         list.add_last(1);
         list.add_last(2);
@@ -237,7 +235,7 @@ mod tests {
 
     #[test]
     fn should_add_last_and_pop_last() {
-        let mut list = DoublyLinkedList::empty();
+        let mut list = Deque::empty();
 
         list.add_last(1);
         list.add_last(2);
@@ -248,7 +246,7 @@ mod tests {
 
     #[test]
     fn should_count_len_after_adding() {
-        let mut list = DoublyLinkedList::empty();
+        let mut list = Deque::empty();
 
         list.add_last(1);
         list.add_last(2);
@@ -258,7 +256,7 @@ mod tests {
 
     #[test]
     fn should_count_len_after_popping() {
-        let mut list = DoublyLinkedList::empty();
+        let mut list = Deque::empty();
 
         list.add_last(1);
         list.add_last(2);
@@ -270,7 +268,7 @@ mod tests {
 
     #[test]
     fn should_drain() {
-        let mut list = DoublyLinkedList::empty();
+        let mut list = Deque::empty();
 
         list.add_last(1);
         list.add_last(2);
