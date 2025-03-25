@@ -1,10 +1,12 @@
 struct SinglyLinkedNode<T> {
     item: T,
-    next: Option<Box<SinglyLinkedNode<T>>>,
+    next: Link<T>,
 }
 
+type Link<T> = Option<Box<SinglyLinkedNode<T>>>;
+
 pub struct SinglyLinkedList<T> {
-    head: Option<Box<SinglyLinkedNode<T>>>,
+    head: Link<T>,
 }
 
 impl<T> SinglyLinkedList<T> {
@@ -18,7 +20,7 @@ impl<T> SinglyLinkedList<T> {
         list
     }
 
-    fn pop_head_node(&mut self) -> Option<Box<SinglyLinkedNode<T>>> {
+    fn pop_head_node(&mut self) -> Link<T> {
         match self.head.take() {
             None => None,
             Some(mut head) => {
