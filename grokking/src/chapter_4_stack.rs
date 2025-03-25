@@ -47,40 +47,65 @@ impl<T> Drop for Stack<T> {
     }
 }
 
+pub struct IntoIter<T>(Stack<T>);
+
+impl<T> Stack<T> {
+    pub fn into_iter(self) -> IntoIter<T> {
+        IntoIter(self)
+    }
+}
+
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.pop_head()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::chapter_4_stack::Stack;
 
     #[test]
     fn should_add_first_and_pop_first() {
-        let mut list = Stack::empty();
+        let mut stack = Stack::empty();
 
-        list.push_head(2);
-        list.push_head(1);
+        stack.push_head(2);
+        stack.push_head(1);
 
-        assert_eq!(list.peek_head().unwrap(), &1);
-        assert_eq!(list.pop_head().unwrap(), 1);
-        assert_eq!(list.pop_head().unwrap(), 2)
+        assert_eq!(stack.peek_head().unwrap(), &1);
+        assert_eq!(stack.pop_head().unwrap(), 1);
+        assert_eq!(stack.pop_head().unwrap(), 2)
     }
 
     #[test]
     fn should_peek_head() {
-        let mut list = Stack::empty();
+        let mut stack = Stack::empty();
 
-        list.push_head(2);
-        list.push_head(1);
+        stack.push_head(2);
+        stack.push_head(1);
 
-        assert_eq!(list.peek_head().unwrap(), &1);
+        assert_eq!(stack.peek_head().unwrap(), &1);
     }
 
     #[test]
     fn should_mutate_head() {
-        let mut list = Stack::empty();
+        let mut stack = Stack::empty();
 
-        list.push_head(2);
-        list.push_head(1);
+        stack.push_head(2);
+        stack.push_head(1);
 
-        list.peek_head_mut().map(|ptr| *ptr = 50);
-        assert_eq!(list.peek_head().unwrap(), &50);
+        stack.peek_head_mut().map(|ptr| *ptr = 50);
+        assert_eq!(stack.peek_head().unwrap(), &50);
+    }
+
+    #[test]
+    fn should_drain_stack() {
+        let mut stack = Stack::empty();
+
+        stack.push_head(2);
+        stack.push_head(1);
+
+        assert_eq!(stack.into_iter().collect::<Vec<i32>>(), vec![1, 2])
     }
 }
