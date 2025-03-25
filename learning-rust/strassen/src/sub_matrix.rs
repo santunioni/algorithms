@@ -330,49 +330,93 @@ impl<'a> Mul<Self> for &SubMatrix<'a> {
 
         return Ok(self.multiply_baseline(rhs));
 
-        let left_rows = self.rows();
-        let inner_multiplication_index = self.cols();
-        let right_cols = rhs.cols();
+        // let left_rows = self.rows();
+        // let inner_multiplication_index = self.cols();
+        // let right_cols = rhs.cols();
+        //
+        // if left_rows == 1 || inner_multiplication_index == 1 || right_cols == 1 {
+        //     return Ok(self.multiply_baseline(&rhs));
+        // }
+        //
+        // if left_rows == 0 || inner_multiplication_index == 0 || right_cols == 0 {
+        //     return Ok(Matrix::empty());
+        // }
+        //
+        // let lesser_dimension = left_rows.min(inner_multiplication_index).min(right_cols);
+        // let lesser_dimension_log = lesser_dimension.ilog2();
+        // let dimension_to_split = 2u32.pow(lesser_dimension_log) as usize;
+        //
+        // if left_rows == dimension_to_split
+        //     && inner_multiplication_index == dimension_to_split
+        //     && right_cols == dimension_to_split
+        // {
+        //     return Ok(self.multiply_baseline(rhs));
+        // }
+        //
+        // let [lhs_left_top, lhs_right_top, lhs_left_bot, lhs_right_bot] =
+        //     self.split_in_4_parts(dimension_to_split, dimension_to_split);
+        //
+        // let [rhs_left_top, rhs_right_top, rhs_left_bot, rhs_right_bot] =
+        //     rhs.split_in_4_parts(dimension_to_split, dimension_to_split);
+        //
+        // let left_top = (&(&lhs_left_top * &rhs_left_top)? + &(&lhs_right_top * &rhs_left_bot)?)?;
+        //
+        // let right_top = (&(&lhs_left_top * &rhs_right_top)? + &(&lhs_right_top * &rhs_right_bot)?)?;
+        //
+        // let left_bottom = (&(&lhs_left_bot * &rhs_left_top)? + &(&lhs_right_bot * &rhs_left_bot)?)?;
+        //
+        // let left_right =
+        //     (&(&lhs_left_bot * &rhs_right_top)? + &(&lhs_right_bot * &rhs_right_bot)?)?;
+        //
+        // Ok(Matrix::assemble_from_four_pieces(
+        //     left_top,
+        //     right_top,
+        //     left_bottom,
+        //     left_right,
+        // ))
+    }
+}
 
-        if left_rows == 1 || inner_multiplication_index == 1 || right_cols == 1 {
-            return Ok(self.multiply_baseline(&rhs));
-        }
+#[cfg(test)]
+mod tests {
+    use crate::matrix;
+    use crate::matrix::Matrix;
+    type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-        if left_rows == 0 || inner_multiplication_index == 0 || right_cols == 0 {
-            return Ok(Matrix::empty());
-        }
+    #[test]
+    fn should_divide_3_by_3_matrix_in_4_parts() -> TestResult {
+        let original_matrix: Matrix = matrix![[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+        let original_matrix_as_sub_matrix = original_matrix.as_sub_matrix();
 
-        let lesser_dimension = left_rows.min(inner_multiplication_index).min(right_cols);
-        let lesser_dimension_log = lesser_dimension.ilog2();
-        let dimension_to_split = 2u32.pow(lesser_dimension_log) as usize;
+        let [a, b, c, d] = original_matrix_as_sub_matrix
+            .split_in_4_parts(2, 2)
+            .map(|v| v.materialize());
 
-        if left_rows == dimension_to_split
-            && inner_multiplication_index == dimension_to_split
-            && right_cols == dimension_to_split
-        {
-            return Ok(self.multiply_baseline(rhs));
-        }
+        assert_eq!(a, matrix![[1, 2], [4, 5]]);
+        assert_eq!(b, matrix![[3], [6]]);
+        assert_eq!(c, matrix![[7, 8]]);
+        assert_eq!(d, matrix![[9]]);
+        Ok(())
+    }
 
-        let [lhs_left_top, lhs_right_top, lhs_left_bot, lhs_right_bot] =
-            self.split_in_4_parts(dimension_to_split, dimension_to_split);
+    #[test]
+    fn should_divide_4_by_4_matrix_in_4_parts() -> TestResult {
+        let original_matrix: Matrix = matrix![
+            [1, 2, 3, 4],
+            [5, 6, 7, 8],
+            [9, 10, 11, 12],
+            [13, 14, 15, 16]
+        ];
+        let original_matrix_as_sub_matrix = original_matrix.as_sub_matrix();
 
-        let [rhs_left_top, rhs_right_top, rhs_left_bot, rhs_right_bot] =
-            rhs.split_in_4_parts(dimension_to_split, dimension_to_split);
+        let [top_left, top_right, bottom_left, bottom_right] = original_matrix_as_sub_matrix
+            .split_in_4_parts(2, 2)
+            .map(|v| v.materialize());
 
-        let left_top = (&(&lhs_left_top * &rhs_left_top)? + &(&lhs_right_top * &rhs_left_bot)?)?;
-
-        let right_top = (&(&lhs_left_top * &rhs_right_top)? + &(&lhs_right_top * &rhs_right_bot)?)?;
-
-        let left_bottom = (&(&lhs_left_bot * &rhs_left_top)? + &(&lhs_right_bot * &rhs_left_bot)?)?;
-
-        let left_right =
-            (&(&lhs_left_bot * &rhs_right_top)? + &(&lhs_right_bot * &rhs_right_bot)?)?;
-
-        Ok(Matrix::assemble_from_four_pieces(
-            left_top,
-            right_top,
-            left_bottom,
-            left_right,
-        ))
+        assert_eq!(top_left, matrix![[1, 2], [5, 6]]);
+        assert_eq!(top_right, matrix![[3, 4], [7, 8]]);
+        assert_eq!(bottom_left, matrix![[9, 10], [13, 14]]);
+        assert_eq!(bottom_right, matrix![[11, 12], [15, 16]]);
+        Ok(())
     }
 }

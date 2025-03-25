@@ -94,19 +94,19 @@ impl<T> Drain<T> {
     }
 }
 
-pub struct LinkedListIterator<'a, T> {
+pub struct DoublyLinkedListIterator<'a, T> {
     curr: Option<Ref<'a, DoublyLinkedNode<T>>>,
 }
 
-impl<'a, T> LinkedListIterator<'a, T> {
-    fn new(list: &DoublyLinkedList<T>) -> LinkedListIterator<T> {
-        LinkedListIterator {
+impl<'a, T> DoublyLinkedListIterator<'a, T> {
+    fn new(list: &DoublyLinkedList<T>) -> DoublyLinkedListIterator<T> {
+        DoublyLinkedListIterator {
             curr: list.first.as_ref().map(|first| first.borrow()),
         }
     }
 }
 
-// impl<'a,T: 'a> Iterator for LinkedListIterator<'a,T> {
+// impl<'a,T: 'a> Iterator for DoublyLinkedListIterator<'a,T> {
 //     type Item = &'a T;
 
 //     fn next(&mut self) -> Option<Self::Item> {
@@ -152,8 +152,8 @@ impl<T> DoublyLinkedList<T> {
         Drain::new(self)
     }
 
-    pub fn iter(&self) -> LinkedListIterator<T> {
-        LinkedListIterator::new(self)
+    pub fn iter(&self) -> DoublyLinkedListIterator<T> {
+        DoublyLinkedListIterator::new(self)
     }
     pub fn add_first(&mut self, new_first: T) {
         self.first = Some(match self.first.take() {
@@ -200,11 +200,11 @@ impl<T> DoublyLinkedList<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::chapter_4_linked_list::LinkedList;
+    use crate::chapter_4_doubly_linked_list::DoublyLinkedList;
 
     #[test]
     fn should_add_first_and_pop_first() {
-        let mut list = LinkedList::empty();
+        let mut list = DoublyLinkedList::empty();
 
         list.add_first(2);
         list.add_first(1);
@@ -215,7 +215,7 @@ mod tests {
 
     #[test]
     fn should_add_first_and_pop_last() {
-        let mut list = LinkedList::empty();
+        let mut list = DoublyLinkedList::empty();
 
         list.add_first(2);
         list.add_first(1);
@@ -226,7 +226,7 @@ mod tests {
 
     #[test]
     fn should_add_last_and_pop_first() {
-        let mut list = LinkedList::empty();
+        let mut list = DoublyLinkedList::empty();
 
         list.add_last(1);
         list.add_last(2);
@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn should_add_last_and_pop_last() {
-        let mut list = LinkedList::empty();
+        let mut list = DoublyLinkedList::empty();
 
         list.add_last(1);
         list.add_last(2);
@@ -248,7 +248,7 @@ mod tests {
 
     #[test]
     fn should_count_len_after_adding() {
-        let mut list = LinkedList::empty();
+        let mut list = DoublyLinkedList::empty();
 
         list.add_last(1);
         list.add_last(2);
@@ -258,7 +258,7 @@ mod tests {
 
     #[test]
     fn should_count_len_after_popping() {
-        let mut list = LinkedList::empty();
+        let mut list = DoublyLinkedList::empty();
 
         list.add_last(1);
         list.add_last(2);
@@ -270,7 +270,7 @@ mod tests {
 
     #[test]
     fn should_drain() {
-        let mut list = LinkedList::empty();
+        let mut list = DoublyLinkedList::empty();
 
         list.add_last(1);
         list.add_last(2);
@@ -284,7 +284,7 @@ mod tests {
 
     // #[test]
     // fn should_iterate() {
-    //     let mut list = LinkedList::empty();
+    //     let mut list = DoublyLinkedList::empty();
     //     list.add_last(1);
     //     list.add_last(2);
     //
