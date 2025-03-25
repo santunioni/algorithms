@@ -22,7 +22,11 @@ impl<T> Stack<T> {
     }
 
     fn peek_head(&self) -> Option<&T> {
-        self.head.as_ref().map(|v| &v.item)
+        self.head.as_ref().map(|node| &node.item)
+    }
+
+    fn peek_head_mut(&mut self) -> Option<&mut T> {
+        self.head.as_mut().map(|node| &mut node.item)
     }
 
     pub fn push_head(&mut self, item: T) {
@@ -57,5 +61,26 @@ mod tests {
         assert_eq!(list.peek_head().unwrap(), &1);
         assert_eq!(list.pop_head().unwrap(), 1);
         assert_eq!(list.pop_head().unwrap(), 2)
+    }
+
+    #[test]
+    fn should_peek_head() {
+        let mut list = Stack::empty();
+
+        list.push_head(2);
+        list.push_head(1);
+
+        assert_eq!(list.peek_head().unwrap(), &1);
+    }
+
+    #[test]
+    fn should_mutate_head() {
+        let mut list = Stack::empty();
+
+        list.push_head(2);
+        list.push_head(1);
+
+        list.peek_head_mut().map(|ptr| *ptr = 50);
+        assert_eq!(list.peek_head().unwrap(), &50);
     }
 }
