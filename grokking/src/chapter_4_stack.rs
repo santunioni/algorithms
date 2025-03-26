@@ -51,6 +51,10 @@ impl<T> Stack<T> {
     pub fn iter_mut(&mut self) -> StackIterMut<T> {
         StackIterMut(self.head.as_mut().map(|box_ref| box_ref.as_mut()))
     }
+
+    pub fn contains<F: FnMut(&T) -> bool>(&self, check: F) -> bool {
+        self.iter().any(check)
+    }
 }
 
 impl<T> Drop for Stack<T> {
@@ -167,5 +171,16 @@ mod tests {
         *iter.next().unwrap() = 100;
         assert_eq!(stack.pop_head(), Some(50));
         assert_eq!(stack.pop_head(), Some(100));
+    }
+
+    #[test]
+    fn should_find_item() {
+        let mut stack = Stack::empty();
+
+        stack.push_head(2);
+        stack.push_head(1);
+
+        assert_eq!(stack.contains(|item| *item == 1), true);
+        assert_eq!(stack.contains(|item| *item == 3), false);
     }
 }
