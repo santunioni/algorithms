@@ -45,7 +45,7 @@ impl<T> Stack<T> {
     }
 
     pub fn iter(&self) -> StackIter<T> {
-        StackIter(&self)
+        StackIter(self.head.as_ref().map(|box_ref| box_ref.as_ref()))
     }
 }
 
@@ -64,13 +64,19 @@ impl<T> Iterator for StackDrain<T> {
     }
 }
 
-pub struct StackIter<'a, T>(&'a Stack<T>);
+pub struct StackIter<'a, T>(Option<&'a Node<T>>);
 
 impl<'a, T> Iterator for StackIter<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        None
+        match self.0.take() {
+            None => None,
+            Some(cursor) => {
+                self.0 = cursor.next.as_ref().map(|box_ref| box_ref.as_ref());
+                Some(&cursor.item)
+            }
+        }
     }
 }
 
