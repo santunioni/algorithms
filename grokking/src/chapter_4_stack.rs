@@ -40,8 +40,12 @@ impl<T> Stack<T> {
         self.pop_head_node().map(|v| v.item)
     }
 
-    pub fn drain(self) -> Drain<T> {
-        Drain(self)
+    pub fn drain(self) -> StackDrain<T> {
+        StackDrain(self)
+    }
+
+    pub fn iter(&self) -> StackIter<T> {
+        StackIter(&self)
     }
 }
 
@@ -51,12 +55,22 @@ impl<T> Drop for Stack<T> {
     }
 }
 
-pub struct Drain<T>(Stack<T>);
+pub struct StackDrain<T>(Stack<T>);
 
-impl<T> Iterator for Drain<T> {
+impl<T> Iterator for StackDrain<T> {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
         self.0.pop_head()
+    }
+}
+
+pub struct StackIter<'a, T>(&'a Stack<T>);
+
+impl<'a, T> Iterator for StackIter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        None
     }
 }
 
@@ -105,5 +119,17 @@ mod tests {
         stack.push_head(1);
 
         assert_eq!(stack.drain().collect::<Vec<i32>>(), vec![1, 2])
+    }
+
+    #[test]
+    fn should_iter_on_stack() {
+        let mut stack = Stack::empty();
+
+        stack.push_head(2);
+        stack.push_head(1);
+
+        let mut iter = stack.iter();
+        assert_eq!(iter.next(), Some(&1));
+        assert_eq!(iter.next(), Some(&2));
     }
 }
