@@ -47,6 +47,10 @@ impl<T> Stack<T> {
     pub fn iter(&self) -> StackIter<T> {
         StackIter(self.head.as_ref().map(|box_ref| box_ref.as_ref()))
     }
+
+    pub fn iter_mut(&mut self) -> StackIterMut<T> {
+        StackIterMut(self.head.as_mut().map(|box_ref| box_ref.as_mut()))
+    }
 }
 
 impl<T> Drop for Stack<T> {
@@ -70,13 +74,25 @@ impl<'a, T> Iterator for StackIter<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.0.take() {
-            None => None,
-            Some(cursor) => {
-                self.0 = cursor.next.as_ref().map(|box_ref| box_ref.as_ref());
-                Some(&cursor.item)
-            }
-        }
+        self.0.take().map(|cursor| {
+            let box_ref_option = cursor.next.as_ref();
+            self.0 = box_ref_option.map(|box_ref| box_ref.as_ref());
+            &cursor.item
+        })
+    }
+}
+
+pub struct StackIterMut<'a, T>(Option<&'a mut Node<T>>);
+
+impl<'a, T> Iterator for StackIterMut<'a, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.take().map(|cursor| {
+            let box_ref_option = cursor.next.as_mut();
+            self.0 = box_ref_option.map(|box_ref| box_ref.as_mut());
+            &mut cursor.item
+        })
     }
 }
 
@@ -137,5 +153,19 @@ mod tests {
         let mut iter = stack.iter();
         assert_eq!(iter.next(), Some(&1));
         assert_eq!(iter.next(), Some(&2));
+    }
+
+    #[test]
+    fn should_iter_mut_on_stack() {
+        let mut stack = Stack::empty();
+
+        stack.push_head(2);
+        stack.push_head(1);
+
+        let mut iter = stack.iter_mut();
+        *iter.next().unwrap() = 50;
+        *iter.next().unwrap() = 100;
+        assert_eq!(stack.pop_head(), Some(50));
+        assert_eq!(stack.pop_head(), Some(100));
     }
 }
