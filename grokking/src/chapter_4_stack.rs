@@ -10,6 +10,15 @@ pub struct Stack<T> {
 }
 
 impl<T> Stack<T> {
+    pub fn new(with_value: T) -> Self {
+        Stack {
+            head: Some(Box::new(Node {
+                item: with_value,
+                next: None,
+            })),
+        }
+    }
+
     pub fn empty() -> Self {
         Stack { head: None }
     }
@@ -54,6 +63,28 @@ impl<T> Stack<T> {
 
     pub fn contains<F: FnMut(&T) -> bool>(&self, check: F) -> bool {
         self.iter().any(check)
+    }
+
+    pub fn remove_by<F: Fn(&T) -> bool>(&mut self, check: F) {
+        let Some(head) = &mut self.head else { return };
+        if check(&head.item) {
+            self.head = head.next.take();
+            return;
+        }
+
+        let mut previous = head;
+        loop {
+            let Some(cursor) = &mut previous.next else {
+                return;
+            };
+
+            if check(&cursor.item) {
+                previous.next = cursor.next.take();
+                return;
+            }
+
+            previous = cursor;
+        }
     }
 }
 
@@ -182,5 +213,20 @@ mod tests {
 
         assert_eq!(stack.contains(|item| *item == 1), true);
         assert_eq!(stack.contains(|item| *item == 3), false);
+    }
+
+    #[test]
+    fn should_remove_item() {
+        let mut stack = Stack::empty();
+
+        stack.push_head(3);
+        stack.push_head(2);
+        stack.push_head(1);
+
+        stack.remove_by(|v| *v == 2);
+
+        assert_eq!(stack.pop_head(), Some(1));
+        assert_eq!(stack.pop_head(), Some(3));
+        assert_eq!(stack.pop_head(), None);
     }
 }
