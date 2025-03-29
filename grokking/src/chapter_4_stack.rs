@@ -3,6 +3,20 @@ struct Node<T> {
     next: Link<T>,
 }
 
+impl<T> Node<T> {
+    fn pop_next(&mut self) -> Link<T> {
+        let mut to_delete = self.next.take();
+        match to_delete {
+            None => None,
+            Some(mut to_delete) => {
+                let new_next = to_delete.next.take();
+                self.next = new_next;
+                Some(to_delete)
+            }
+        }
+    }
+}
+
 type Link<T> = Option<Box<Node<T>>>;
 
 pub struct Stack<T> {
@@ -25,7 +39,8 @@ impl<T> Stack<T> {
 
     fn pop_head_node(&mut self) -> Link<T> {
         self.head.take().map(|mut old_head| {
-            self.head = old_head.next.take();
+            let new_head = old_head.next.take();
+            self.head = new_head;
             old_head
         })
     }
@@ -41,7 +56,7 @@ impl<T> Stack<T> {
     pub fn push_head(&mut self, item: T) {
         self.head = Some(Box::new(Node {
             item,
-            next: self.pop_head_node(),
+            next: self.head.take(),
         }));
     }
 
@@ -65,26 +80,25 @@ impl<T> Stack<T> {
         self.iter().any(check)
     }
 
-    pub fn remove_by<F: Fn(&T) -> bool>(&mut self, check: F) {
-        let Some(head) = &mut self.head else { return };
-        if check(&head.item) {
-            self.head = head.next.take();
-            return;
-        }
-
-        let mut previous = head;
-        loop {
-            let Some(cursor) = &mut previous.next else {
-                return;
-            };
-
-            if check(&cursor.item) {
-                previous.next = cursor.next.take();
-                return;
+    fn find_node_mut<F: Fn(&Node<T>) -> bool>(&mut self, check: F) -> Option<&mut Node<T>> {
+        let mut cursor = self.head.as_mut();
+        while let Some(node) = cursor {
+            if check(&node) {
+                return Some(node);
             }
-
-            previous = cursor;
+            cursor = node.next.as_mut();
         }
+        None
+    }
+
+    pub fn remove_by<F: Fn(&T) -> bool>(&mut self, check: F) {
+        let Some(node_previous_to_the_one) = self.find_node_mut(|node| match &node.next {
+            None => false,
+            Some(next) => check(&next.item)
+        }) else { return };
+
+        let Some(mut the_one_node_to_remove) = node_previous_to_the_one.next.take() else { return };
+        node_previous_to_the_one.next = the_one_node_to_remove.next.take();
     }
 }
 
@@ -172,22 +186,26 @@ mod tests {
     fn should_drain_stack() {
         let mut stack = Stack::empty();
 
+        stack.push_head(3);
         stack.push_head(2);
         stack.push_head(1);
 
-        assert_eq!(stack.drain().collect::<Vec<i32>>(), vec![1, 2])
+        assert_eq!(stack.drain().collect::<Vec<i32>>(), vec![1, 2, 3])
     }
 
     #[test]
     fn should_iter_on_stack() {
         let mut stack = Stack::empty();
 
+        stack.push_head(3);
         stack.push_head(2);
         stack.push_head(1);
 
         let mut iter = stack.iter();
         assert_eq!(iter.next(), Some(&1));
         assert_eq!(iter.next(), Some(&2));
+        assert_eq!(iter.next(), Some(&3));
+        assert_eq!(iter.next(), None);
     }
 
     #[test]
