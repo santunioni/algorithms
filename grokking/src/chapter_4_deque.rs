@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
 struct Node<T> {
-    item: Option<T>,
+    item: T,
     prev: Option<NodeWeakRef<T>>,
     next: Option<NodeStrongRef<T>>,
 }
@@ -13,36 +13,10 @@ type NodeWeakRef<T> = Weak<RefCell<Node<T>>>;
 impl<T> Node<T> {
     fn new(item: T) -> NodeStrongRef<T> {
         Rc::new(RefCell::new(Node {
-            item: Some(item),
+            item,
             prev: None,
             next: None,
         }))
-    }
-
-    fn pop(&mut self) -> (Option<NodeWeakRef<T>>, Option<T>, Option<NodeStrongRef<T>>) {
-        let Node { item, prev, next } = self;
-
-        let prev = if let Some(prev) = prev.take() {
-            prev.upgrade()
-        } else {
-            None
-        };
-
-        match (&prev, &next) {
-            (Some(prev_up), Some(next)) => {
-                prev_up.borrow_mut().next = Some(Rc::clone(next));
-                next.borrow_mut().prev = Some(Rc::downgrade(prev_up));
-            }
-            (Some(prev), None) => prev.borrow_mut().next = None,
-            (None, Some(next)) => next.borrow_mut().prev = None,
-            (None, None) => {}
-        }
-
-        (
-            prev.map(|prev| Rc::downgrade(&prev)),
-            item.take(),
-            next.take(),
-        )
     }
 
     fn append(self_ref: NodeStrongRef<T>, item: T) -> NodeWeakRef<T> {
@@ -135,9 +109,13 @@ impl<T> Deque<T> {
     }
 
     pub fn pop_first(&mut self) -> Option<T> {
-        let (_, item, next) = self.first.take()?.borrow_mut().pop();
-        self.first = next;
-        item
+        match self.first.take() {
+            None => None,
+            Some(node_strong_ref) => {
+                self.first = node_strong_ref.borrow_mut().next.take();
+                Some(Rc::into_inner(node_strong_ref).unwrap().into_inner().item)
+            }
+        }
     }
 
     pub fn add_last(&mut self, new_last: T) {
@@ -152,9 +130,30 @@ impl<T> Deque<T> {
     }
 
     pub fn pop_last(&mut self) -> Option<T> {
-        let (prev, item, _) = self.last.take()?.upgrade()?.borrow_mut().pop();
-        self.last = prev;
-        item
+        match self.last.take() {
+            None => None,
+            Some(node_weak_ref) => {
+                let node_strong_ref = Weak::upgrade(&node_weak_ref).unwrap();
+                let previous = node_strong_ref.borrow_mut().prev.take();
+
+                if let Some(previous_weak_ref) = previous {
+                    if let Some(previous_strong_ref) = Weak::upgrade(&previous_weak_ref) {
+                        previous_strong_ref.borrow_mut().next.take();
+                        self.last = Some(Rc::downgrade(&previous_strong_ref));
+
+
+                        let node_optional = Rc::into_inner(node_strong_ref);
+                        let node = node_optional.unwrap();
+                        return Some(node.into_inner().item)
+                    }
+                }
+
+                drop(node_strong_ref);
+                self.first.take().map(|value| {
+                    Rc::into_inner(value).unwrap().into_inner().item
+                })
+            }
+        }
     }
 }
 
