@@ -57,7 +57,7 @@ impl<T> Stack<T> {
         self.head.as_mut().map(|node| &mut node.item)
     }
 
-    pub fn push_head(&mut self, item: T) {
+    pub fn prepend(&mut self, item: T) {
         self.head = Some(Box::new(Node {
             item,
             next: self.head.take(),
@@ -163,8 +163,8 @@ mod tests {
     fn should_add_first_and_pop_first() {
         let mut stack = Stack::empty();
 
-        stack.push_head(2);
-        stack.push_head(1);
+        stack.prepend(2);
+        stack.prepend(1);
 
         assert_eq!(stack.peek_head().unwrap(), &1);
         assert_eq!(stack.pop_head().unwrap(), 1);
@@ -175,8 +175,8 @@ mod tests {
     fn should_peek_head() {
         let mut stack = Stack::empty();
 
-        stack.push_head(2);
-        stack.push_head(1);
+        stack.prepend(2);
+        stack.prepend(1);
 
         assert_eq!(stack.peek_head().unwrap(), &1);
     }
@@ -185,10 +185,12 @@ mod tests {
     fn should_mutate_head() {
         let mut stack = Stack::empty();
 
-        stack.push_head(2);
-        stack.push_head(1);
+        stack.prepend(2);
+        stack.prepend(1);
+        if let Some(ptr) = stack.peek_head_mut() {
+            *ptr = 50
+        }
 
-        stack.peek_head_mut().map(|ptr| *ptr = 50);
         assert_eq!(stack.peek_head().unwrap(), &50);
     }
 
@@ -196,9 +198,9 @@ mod tests {
     fn should_drain_stack() {
         let mut stack = Stack::empty();
 
-        stack.push_head(3);
-        stack.push_head(2);
-        stack.push_head(1);
+        stack.prepend(3);
+        stack.prepend(2);
+        stack.prepend(1);
 
         assert_eq!(stack.drain().collect::<Vec<i32>>(), vec![1, 2, 3])
     }
@@ -207,9 +209,9 @@ mod tests {
     fn should_iter_on_stack() {
         let mut stack = Stack::empty();
 
-        stack.push_head(3);
-        stack.push_head(2);
-        stack.push_head(1);
+        stack.prepend(3);
+        stack.prepend(2);
+        stack.prepend(1);
 
         let mut iter = stack.iter();
         assert_eq!(iter.next(), Some(&1));
@@ -222,8 +224,8 @@ mod tests {
     fn should_iter_mut_on_stack() {
         let mut stack = Stack::empty();
 
-        stack.push_head(2);
-        stack.push_head(1);
+        stack.prepend(2);
+        stack.prepend(1);
 
         let mut iter = stack.iter_mut();
         *iter.next().unwrap() = 50;
@@ -236,20 +238,20 @@ mod tests {
     fn should_find_item() {
         let mut stack = Stack::empty();
 
-        stack.push_head(2);
-        stack.push_head(1);
+        stack.prepend(2);
+        stack.prepend(1);
 
-        assert_eq!(stack.contains(|item| *item == 1), true);
-        assert_eq!(stack.contains(|item| *item == 3), false);
+        assert!(stack.contains(|item| *item == 1));
+        assert!(!stack.contains(|item| *item == 3));
     }
 
     #[test]
     fn should_remove_item() {
         let mut stack = Stack::empty();
 
-        stack.push_head(3);
-        stack.push_head(2);
-        stack.push_head(1);
+        stack.prepend(3);
+        stack.prepend(2);
+        stack.prepend(1);
 
         stack.remove_by(|v| *v == 2);
 
@@ -262,8 +264,8 @@ mod tests {
     fn should_remove_head() {
         let mut stack = Stack::empty();
 
-        stack.push_head(2);
-        stack.push_head(1);
+        stack.prepend(2);
+        stack.prepend(1);
 
         stack.remove_by(|v| *v == 1);
 

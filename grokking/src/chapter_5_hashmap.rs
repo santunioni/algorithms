@@ -63,7 +63,7 @@ where
         {
             existing_entry.value = new_entry.value
         } else {
-            shelf.push_head(new_entry);
+            shelf.prepend(new_entry);
             self.number_of_values += 1;
         }
     }

@@ -50,7 +50,7 @@ where
         let hash = self.hash_key(&value);
         let shelf = &mut self.hash_table[hash];
         if !shelf.iter().any(|value_in_shelf| *value_in_shelf == value) {
-            shelf.push_head(value);
+            shelf.prepend(value);
             self.number_of_values += 1;
         }
     }
