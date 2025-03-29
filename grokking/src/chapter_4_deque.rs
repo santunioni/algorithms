@@ -79,9 +79,14 @@ impl<T> Node<T> {
 }
 
 pub struct Deque<T> {
-    len: u64,
     first: Option<NodeStrongRef<T>>,
     last: Option<NodeWeakRef<T>>,
+}
+
+impl<T> Drop for Deque<T> {
+    fn drop(&mut self) {
+        while self.pop_first().is_some() {}
+    }
 }
 
 pub struct Drain<T>(Deque<T>);
@@ -92,33 +97,6 @@ impl<T> Drain<T> {
     }
 }
 
-pub struct DoublyLinkedListIterator<'a, T> {
-    curr: Option<Ref<'a, Node<T>>>,
-}
-
-impl<T> DoublyLinkedListIterator<'_, T> {
-    fn new(list: &Deque<T>) -> DoublyLinkedListIterator<T> {
-        DoublyLinkedListIterator {
-            curr: list.first.as_ref().map(|first| first.borrow()),
-        }
-    }
-}
-
-// impl<'a,T: 'a> Iterator for DoublyLinkedListIterator<'a,T> {
-//     type Item = &'a T;
-
-//     fn next(&mut self) -> Option<Self::Item> {
-//         let curr = self.curr.take();
-//         if let Some(current) = curr {
-//             let next = &current.next.as_ref().map(|next| next.borrow());
-//             self.curr = next;
-//             current.item.as_ref()
-//         } else {
-//             None
-//         }
-//     }
-// }
-
 impl<T> Iterator for Drain<T> {
     type Item = T;
 
@@ -127,10 +105,15 @@ impl<T> Iterator for Drain<T> {
     }
 }
 
+impl<T> DoubleEndedIterator for Drain<T> {
+    fn next_back(&mut self) -> Option<T> {
+        self.0.pop_last()
+    }
+}
+
 impl<T> Deque<T> {
     pub fn empty() -> Deque<T> {
         Deque {
-            len: 0,
             first: None,
             last: None,
         }
@@ -150,9 +133,6 @@ impl<T> Deque<T> {
         Drain::new(self)
     }
 
-    pub fn iter(&self) -> DoublyLinkedListIterator<T> {
-        DoublyLinkedListIterator::new(self)
-    }
     pub fn add_first(&mut self, new_first: T) {
         self.first = Some(match self.first.take() {
             Some(first) => Node::prepend(first, new_first),
@@ -162,13 +142,11 @@ impl<T> Deque<T> {
                 cell
             }
         });
-        self.len += 1;
     }
 
     pub fn pop_first(&mut self) -> Option<T> {
         let (_, item, next) = self.first.take()?.borrow_mut().pop();
         self.first = next;
-        self.len -= 1;
         item
     }
 
@@ -181,18 +159,12 @@ impl<T> Deque<T> {
                 Rc::downgrade(&cell)
             }
         });
-        self.len += 1;
     }
 
     pub fn pop_last(&mut self) -> Option<T> {
         let (prev, item, _) = self.last.take()?.upgrade()?.borrow_mut().pop();
         self.last = prev;
-        self.len -= 1;
         item
-    }
-
-    pub fn len(&self) -> u64 {
-        self.len
     }
 }
 
@@ -245,28 +217,6 @@ mod tests {
     }
 
     #[test]
-    fn should_count_len_after_adding() {
-        let mut list = Deque::empty();
-
-        list.add_last(1);
-        list.add_last(2);
-
-        assert_eq!(list.len(), 2);
-    }
-
-    #[test]
-    fn should_count_len_after_popping() {
-        let mut list = Deque::empty();
-
-        list.add_last(1);
-        list.add_last(2);
-        list.pop_first();
-        list.pop_last();
-
-        assert_eq!(list.len(), 0);
-    }
-
-    #[test]
     fn should_drain() {
         let mut list = Deque::empty();
 
@@ -277,6 +227,24 @@ mod tests {
 
         assert_eq!(iter.next().unwrap(), 1);
         assert_eq!(iter.next().unwrap(), 2);
+        assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn should_drain_rev() {
+        let mut list = Deque::empty();
+
+        list.add_last(1);
+        list.add_last(2);
+        list.add_last(3);
+
+        let mut iter = list.drain();
+        assert_eq!(iter.next().unwrap(), 1);
+
+        let mut iter = iter.rev();
+        assert_eq!(iter.next().unwrap(), 3);
+        assert_eq!(iter.next().unwrap(), 2);
+
         assert!(iter.next().is_none());
     }
 
