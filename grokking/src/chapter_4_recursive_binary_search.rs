@@ -29,31 +29,23 @@ fn recursive_binary_search<T: PartialOrd>(list: &[T], searched_value: &T) -> Opt
 
 fn loop_binary_search<T: PartialOrd>(list: &[T], searched_value: &T) -> Option<usize> {
     let mut start_index = 0;
-    let mut list = list;
+    let mut final_index = list.len() - 1;
 
     loop {
-        let mid_index = list.len() / 2;
+        let mid_index = (start_index + final_index) / 2;
         let mid_value: &T = &list[mid_index];
 
-        let (first_half, second_half) = list.split_at(mid_index);
         if searched_value < mid_value {
-            list = first_half;
+            final_index = mid_index - 1;
         } else if searched_value > mid_value {
-            if mid_index == 0 {
+            if mid_index == start_index {
                 return None;
             }
-            list = second_half;
-            start_index += mid_index;
+            start_index = mid_index + 1;
         } else {
-            return Some(start_index + mid_index);
-        }
-
-        if list.is_empty() {
-            break;
+            return Some(mid_index);
         }
     }
-
-    None
 }
 
 #[cfg(test)]
