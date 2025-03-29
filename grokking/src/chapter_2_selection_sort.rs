@@ -17,15 +17,15 @@ macro_rules! transfer_ordered_values_to_new_vector {
     }};
 }
 
-fn copy_items_to_selection_sorted<T>(vec: &Vec<T>) -> Vec<T>
+fn copy_items_to_selection_sorted<T>(vec: &[T]) -> Vec<T>
 where
     T: PartialOrd + Copy,
 {
-    let mut copied_vec: Vec<T> = vec.iter().map(|x| *x).collect();
+    let mut copied_vec: Vec<T> = vec.to_vec();
     transfer_ordered_values_to_new_vector!(copied_vec)
 }
 
-fn borrow_items_to_selection_sorted<T>(vec: &Vec<T>) -> Vec<&T>
+fn borrow_items_to_selection_sorted<T>(vec: &[T]) -> Vec<&T>
 where
     T: PartialOrd,
 {
@@ -47,7 +47,7 @@ mod tests {
     #[test]
     fn should_return_sorted_array_from_reference() {
         assert_eq!(
-            copy_items_to_selection_sorted(&vec![2, 1, -30]),
+            copy_items_to_selection_sorted(&[2, 1, -30]),
             vec![-30, 1, 2]
         );
     }
@@ -63,7 +63,7 @@ mod tests {
     #[test]
     fn should_return_refs_to_owned_sorted_values() {
         let unsorted_vec = vec![Box::new(2), Box::new(1), Box::new(-30)];
-        let expected_sorted_vec = vec![Box::new(-30), Box::new(1), Box::new(2)];
+        let expected_sorted_vec = [Box::new(-30), Box::new(1), Box::new(2)];
 
         assert_eq!(
             borrow_items_to_selection_sorted(&unsorted_vec)
@@ -80,7 +80,7 @@ mod tests {
         let two = Box::new(2);
 
         let actual_sorted: Vec<&Box<i32>> =
-            copy_items_to_selection_sorted(&vec![&two, &one, &minus_thirty]);
+            copy_items_to_selection_sorted(&[&two, &one, &minus_thirty]);
 
         let expected = vec![&minus_thirty, &one, &two];
         assert_eq!(actual_sorted, expected);

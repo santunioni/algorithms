@@ -71,7 +71,7 @@ fn filter_slices_yet_to_sort<T: PartialOrd>(slices_to_sort: Vec<&mut [T]>) -> Ve
 
 /// A loop version of quicksort, the fastest possible
 fn quick_sorted_loop<T: PartialOrd>(mut slices_to_sort: Vec<&mut [T]>) {
-    while slices_to_sort.len() > 0 {
+    while !slices_to_sort.is_empty() {
         slices_to_sort = filter_slices_yet_to_sort(slices_to_sort);
     }
 }
@@ -87,7 +87,7 @@ fn quick_sorted_loop<T: PartialOrd>(mut slices_to_sort: Vec<&mut [T]>) {
 /// how to implement as tail call.
 fn quick_sorted_tailed<T: PartialOrd>(mut slices_yet_to_sort: Vec<&mut [T]>) {
     slices_yet_to_sort = filter_slices_yet_to_sort(slices_yet_to_sort);
-    if slices_yet_to_sort.len() == 0 {
+    if slices_yet_to_sort.is_empty() {
         return;
     }
     quick_sorted_tailed(slices_yet_to_sort);

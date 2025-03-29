@@ -83,7 +83,7 @@ impl<T> Stack<T> {
     fn find_node_mut<F: Fn(&Node<T>) -> bool>(&mut self, check: F) -> Option<&mut Node<T>> {
         let mut cursor = self.head.as_mut();
         while let Some(node) = cursor {
-            if check(&node) {
+            if check(node) {
                 return Some(node);
             }
             cursor = node.next.as_mut();

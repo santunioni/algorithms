@@ -57,7 +57,7 @@ where
         );
         preserved_old_hash_table
             .into_iter()
-            .filter_map(|stack_option| stack_option)
+            .flatten()
             .for_each(|stack| {
                 stack
                     .drain()

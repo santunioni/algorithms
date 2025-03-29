@@ -39,7 +39,7 @@ fn merge_vectors<T: PartialOrd>(mut first_half: Vec<T>, mut second_half: Vec<T>)
 
 fn split_vector<T>(mut vec: Vec<T>) -> (Vec<T>, Vec<T>) {
     let first_half: Vec<T> = vec.drain(0..vec.len() / 2).collect();
-    let second_half: Vec<T> = vec.drain(0..).collect();
+    let second_half: Vec<T> = std::mem::take(&mut vec);
     (first_half, second_half)
 }
 

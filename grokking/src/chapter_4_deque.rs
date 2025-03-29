@@ -10,9 +10,9 @@ struct Node<T> {
 type NodeStrongRef<T> = Rc<RefCell<Node<T>>>;
 type NodeWeakRef<T> = Weak<RefCell<Node<T>>>;
 
-impl<T> Into<NodeStrongRef<T>> for Node<T> {
-    fn into(self) -> NodeStrongRef<T> {
-        Rc::new(RefCell::new(self))
+impl<T> From<Node<T>> for NodeStrongRef<T> {
+    fn from(value: Node<T>) -> Self {
+        Rc::new(RefCell::new(value))
     }
 }
 
@@ -96,7 +96,7 @@ pub struct DoublyLinkedListIterator<'a, T> {
     curr: Option<Ref<'a, Node<T>>>,
 }
 
-impl<'a, T> DoublyLinkedListIterator<'a, T> {
+impl<T> DoublyLinkedListIterator<'_, T> {
     fn new(list: &Deque<T>) -> DoublyLinkedListIterator<T> {
         DoublyLinkedListIterator {
             curr: list.first.as_ref().map(|first| first.borrow()),
