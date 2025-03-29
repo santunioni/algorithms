@@ -14,7 +14,7 @@ struct HashMap<K, V>
 where
     K: Hash + PartialEq,
 {
-    hash_table: Vec<Option<Stack<HashTableEntry<K, V>>>>,
+    hash_table: Vec<Stack<HashTableEntry<K, V>>>,
     number_of_values: u32,
 }
 
@@ -28,14 +28,6 @@ where
         (s.finish() % self.hash_table.len() as u64) as usize
     }
 
-    fn create_vector_of_nones(size: usize) -> Vec<Option<Stack<HashTableEntry<K, V>>>> {
-        let mut hash_table = Vec::with_capacity(size);
-        for _ in 0..size {
-            hash_table.push(None)
-        }
-        hash_table
-    }
-
     fn maybe_grow_table(&mut self) {
         let old_hash_table_len = self.hash_table.len();
 
@@ -46,71 +38,57 @@ where
 
         let preserved_old_hash_table = mem::replace(
             &mut self.hash_table,
-            HashMap::create_vector_of_nones(old_hash_table_len * 2),
+            Stack::create_many(old_hash_table_len * 2),
         );
         self.number_of_values = 0;
         preserved_old_hash_table
             .into_iter()
-            .flatten()
             .flat_map(Stack::drain)
             .for_each(|entry| self.insert_hash_table_entry(entry));
     }
 
     pub fn new() -> Self {
         HashMap {
-            hash_table: HashMap::create_vector_of_nones(16),
+            hash_table: Stack::create_many(16),
             number_of_values: 0,
         }
     }
 
-    fn insert_hash_table_entry(
-        &mut self,
-        entry: HashTableEntry<K, V>
-    ) {
-        let hash = self.hash_key(&entry.key);
-        match &mut self.hash_table[hash] {
-            None => {
-                self.hash_table[hash] = {
-                    self.number_of_values += 1;
-                    Some(Stack::new(entry))
-                }
-            }
-            Some(shelf) => {
-                if let Some(el) = shelf.iter_mut().find(|v| v.key == entry.key) {
-                    el.value = entry.value
-                } else {
-                    shelf.push_head(entry);
-                    self.number_of_values += 1;
-                }
-            }
+    fn insert_hash_table_entry(&mut self, new_entry: HashTableEntry<K, V>) {
+        let hash = self.hash_key(&new_entry.key);
+        let shelf = &mut self.hash_table[hash];
+        if let Some(existing_entry) = shelf
+            .iter_mut()
+            .find(|existing_entry| existing_entry.key == new_entry.key)
+        {
+            existing_entry.value = new_entry.value
+        } else {
+            shelf.push_head(new_entry);
+            self.number_of_values += 1;
         }
     }
 
     pub fn insert(&mut self, key: K, value: V) {
-        self.insert_hash_table_entry(HashTableEntry {key, value});
+        self.insert_hash_table_entry(HashTableEntry { key, value });
         self.maybe_grow_table();
     }
 
     pub fn get(&self, key_ref: &K) -> Option<&V> {
         let hash = self.hash_key(key_ref);
-        match &self.hash_table[hash] {
-            None => None,
-            Some(stack) => stack
-                .iter()
-                .find(|&it| &it.key == key_ref)
-                .map(|entry| &entry.value),
-        }
+        self.hash_table[hash]
+            .iter()
+            .find(|&it| &it.key == key_ref)
+            .map(|entry| &entry.value)
     }
 
     pub fn remove(&mut self, key_ref: &K) -> Option<V> {
         let hash = self.hash_key(key_ref);
-        match &mut self.hash_table[hash] {
-            None => None,
-            Some(stack) => stack.remove_by(|it| &it.key == key_ref).map(|entry| {
+        self.hash_table[hash]
+            .remove_by(|it| &it.key == key_ref)
+            .map(|entry| {
                 self.number_of_values -= 1;
                 entry.value
-            }),
-        }
+            })
     }
 
     pub fn size(&self) -> u32 {

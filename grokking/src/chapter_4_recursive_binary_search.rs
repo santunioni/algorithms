@@ -55,7 +55,10 @@ mod tests {
     #[test]
     fn should_return_found_value_recursive() {
         let my_ordered_array: Vec<u32> = (0..10u32.pow(6)).collect();
-        assert_eq!(recursive_binary_search(&my_ordered_array, &1037u32), Some(1037usize));
+        assert_eq!(
+            recursive_binary_search(&my_ordered_array, &1037u32),
+            Some(1037usize)
+        );
     }
 
     #[test]
@@ -67,7 +70,10 @@ mod tests {
     #[test]
     fn should_return_found_value_loop() {
         let my_ordered_array: Vec<u32> = (0..10u32.pow(6)).collect();
-        assert_eq!(loop_binary_search(&my_ordered_array, &1037u32), Some(1037usize));
+        assert_eq!(
+            loop_binary_search(&my_ordered_array, &1037u32),
+            Some(1037usize)
+        );
     }
 
     #[test]

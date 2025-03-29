@@ -6,7 +6,7 @@ struct HashSet<K>
 where
     K: Hash + PartialEq,
 {
-    hash_table: Vec<Option<Stack<K>>>,
+    hash_table: Vec<Stack<K>>,
     number_of_values: u32,
 }
 
@@ -20,14 +20,6 @@ where
         (s.finish() % self.hash_table.len() as u64) as usize
     }
 
-    fn create_vector_of_nones(size: usize) -> Vec<Option<Stack<K>>> {
-        let mut hash_table = Vec::with_capacity(size);
-        for _ in 0..size {
-            hash_table.push(None)
-        }
-        hash_table
-    }
-
     fn maybe_resize_table(&mut self) {
         let old_hash_table_len = self.hash_table.len();
 
@@ -38,38 +30,28 @@ where
 
         let preserved_old_hash_table = mem::replace(
             &mut self.hash_table,
-            HashSet::create_vector_of_nones(old_hash_table_len * 2),
+            Stack::create_many(old_hash_table_len * 2),
         );
         self.number_of_values = 0;
         preserved_old_hash_table
             .into_iter()
-            .flatten()
             .flat_map(Stack::drain)
             .for_each(|entry| self.insert_hash_table_value(entry));
     }
 
     pub fn new() -> Self {
         HashSet {
-            hash_table: HashSet::create_vector_of_nones(16),
+            hash_table: Stack::create_many(16),
             number_of_values: 0,
         }
     }
 
     fn insert_hash_table_value(&mut self, value: K) {
         let hash = self.hash_key(&value);
-        match &mut self.hash_table[hash] {
-            None => {
-                self.hash_table[hash] = {
-                    self.number_of_values += 1;
-                    Some(Stack::new(value))
-                }
-            }
-            Some(shelf) => {
-                if !shelf.iter().any(|value_in_shelf| *value_in_shelf == value) {
-                    shelf.push_head(value);
-                    self.number_of_values += 1;
-                }
-            }
+        let shelf = &mut self.hash_table[hash];
+        if !shelf.iter().any(|value_in_shelf| *value_in_shelf == value) {
+            shelf.push_head(value);
+            self.number_of_values += 1;
         }
     }
 
@@ -80,24 +62,17 @@ where
 
     pub fn contains(&self, key_ref: &K) -> bool {
         let hash = self.hash_key(key_ref);
-        match &self.hash_table[hash] {
-            None => false,
-            Some(stack) => stack.iter().any(|it| it == key_ref),
-        }
+        self.hash_table[hash].iter().any(|it| it == key_ref)
     }
 
     pub fn remove(&mut self, lookup_value: &K) -> bool {
         let hash = self.hash_key(lookup_value);
-        match &mut self.hash_table[hash] {
-            None => false,
-            Some(stack) => stack
-                .remove_by(|value_in_shelf| value_in_shelf == lookup_value)
-                .map(|_| {
-                    self.number_of_values -= 1;
-                    true
-                })
-                .is_some(),
-        }
+        self.hash_table[hash]
+            .remove_by(|value_in_shelf| value_in_shelf == lookup_value)
+            .map(|_| {
+                self.number_of_values -= 1;
+            })
+            .is_some()
     }
 
     pub fn size(&self) -> u32 {
@@ -144,7 +119,6 @@ mod tests {
         assert_eq!(map.size(), 1000);
     }
 
-
     #[test]
     fn should_not_break_when_removing_item_that_doesnt_exist() {
         let mut map = HashSet::new();
@@ -154,7 +128,7 @@ mod tests {
 
     #[test]
     fn should_return_none() {
-        let map= HashSet::new();
+        let map = HashSet::new();
 
         assert!(!map.contains(&"key".to_string()));
     }

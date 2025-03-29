@@ -33,6 +33,10 @@ impl<T> Stack<T> {
         }
     }
 
+    pub fn create_many(how_many: usize) -> Vec<Stack<T>> {
+        (0..how_many).map(|_| Stack::empty()).collect()
+    }
+
     pub fn empty() -> Self {
         Stack { head: None }
     }
