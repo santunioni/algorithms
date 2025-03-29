@@ -113,7 +113,7 @@ impl<T> Deque<T> {
             None => None,
             Some(node_strong_ref) => {
                 self.first = node_strong_ref.borrow_mut().next.take();
-                Some(Rc::into_inner(node_strong_ref).unwrap().into_inner().item)
+                Some(Deque::extract_strong_ref_item(node_strong_ref))
             }
         }
     }
@@ -140,20 +140,18 @@ impl<T> Deque<T> {
                     if let Some(previous_strong_ref) = Weak::upgrade(&previous_weak_ref) {
                         previous_strong_ref.borrow_mut().next.take();
                         self.last = Some(Rc::downgrade(&previous_strong_ref));
-
-
-                        let node_optional = Rc::into_inner(node_strong_ref);
-                        let node = node_optional.unwrap();
-                        return Some(node.into_inner().item)
+                        return Some(Deque::extract_strong_ref_item(node_strong_ref))
                     }
                 }
 
                 drop(node_strong_ref);
-                self.first.take().map(|value| {
-                    Rc::into_inner(value).unwrap().into_inner().item
-                })
+                self.first.take().map(Deque::extract_strong_ref_item)
             }
         }
+    }
+
+    fn extract_strong_ref_item(strong_ref: NodeStrongRef<T>) -> T {
+        Rc::into_inner(strong_ref).unwrap().into_inner().item
     }
 }
 
@@ -236,17 +234,4 @@ mod tests {
 
         assert!(iter.next().is_none());
     }
-
-    // #[test]
-    // fn should_iterate() {
-    //     let mut list = DoublyLinkedList::empty();
-    //     list.add_last(1);
-    //     list.add_last(2);
-    //
-    //     let mut iter = list.iter();
-    //
-    //     assert_eq!(iter.next().unwrap().clone(), 1.into());
-    //     assert_eq!(iter.next().unwrap().clone(), 2.into());
-    //     assert!(iter.next().is_none());
-    // }
 }
