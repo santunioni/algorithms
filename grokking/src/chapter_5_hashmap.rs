@@ -10,15 +10,6 @@ where
     value: V,
 }
 
-impl<K, V> HashTableEntry<K, V>
-where
-    K: Hash + PartialEq,
-{
-    fn new(key: K, value: V) -> Self {
-        HashTableEntry { key, value }
-    }
-}
-
 struct HashMap<K, V>
 where
     K: Hash + PartialEq,
@@ -45,11 +36,11 @@ where
         hash_table
     }
 
-    fn maybe_resize_table(&mut self) {
+    fn maybe_grow_table(&mut self) {
         let old_hash_table_len = self.hash_table.len();
 
-        let should_resize = 4 * self.number_of_values > 3 * old_hash_table_len as u32;
-        if !should_resize {
+        let should_grow = 4 * self.number_of_values > 3 * old_hash_table_len as u32;
+        if !should_grow {
             return;
         }
 
@@ -97,7 +88,7 @@ where
 
     pub fn insert(&mut self, key: K, value: V) {
         self.insert_hash_table_entry(HashTableEntry {key, value});
-        self.maybe_resize_table();
+        self.maybe_grow_table();
     }
 
     pub fn get(&self, key_ref: &K) -> Option<&V> {
@@ -164,5 +155,19 @@ mod tests {
             assert_eq!(map.get(&format!("key{}", i)), Some(&i));
         }
         assert_eq!(map.size(), 1000);
+    }
+
+    #[test]
+    fn should_not_break_when_removing_item_that_doesnt_exist() {
+        let mut map: HashMap<String, i32> = HashMap::new();
+
+        assert_eq!(map.remove(&"key".to_string()), None);
+    }
+
+    #[test]
+    fn should_return_none() {
+        let map: HashMap<String, i32> = HashMap::new();
+
+        assert_eq!(map.get(&"key".to_string()), None);
     }
 }

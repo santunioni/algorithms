@@ -92,7 +92,7 @@ where
             None => false,
             Some(stack) => stack
                 .remove_by(|value_in_shelf| value_in_shelf == lookup_value)
-                .map(|_entry| {
+                .map(|_| {
                     self.number_of_values -= 1;
                     true
                 })
@@ -142,5 +142,20 @@ mod tests {
             assert!(map.contains(&format!("key{}", i)));
         }
         assert_eq!(map.size(), 1000);
+    }
+
+
+    #[test]
+    fn should_not_break_when_removing_item_that_doesnt_exist() {
+        let mut map = HashSet::new();
+
+        assert!(!map.remove(&"key".to_string()));
+    }
+
+    #[test]
+    fn should_return_none() {
+        let map= HashSet::new();
+
+        assert!(!map.contains(&"key".to_string()));
     }
 }
