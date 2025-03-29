@@ -38,9 +38,30 @@ mod tests {
     use super::*;
 
     #[test]
-    fn should_return_80() {
-        assert_eq!(greatest_common_divisor_simpler_but_slow(1680, 640), 80);
-        assert_eq!(greatest_common_divisor_loop_euclides(1680, 640), 80);
-        assert_eq!(greatest_common_divisor_simpler_but_slow(1680, 640), 80);
+    fn should_return_expected_gcd() {
+        for example in [
+            (1680, 640, 80),
+            (640, 1680, 80),
+            (1680, 1680, 1680),
+            (1, 2, 1),
+            (3, 5, 1),
+            (3, 6, 3),
+            (6, 3, 3),
+            (1, 1, 1),
+        ] {
+            let (first, second, expected) = example;
+            assert_eq!(
+                greatest_common_divisor_recursive_euclides(first, second),
+                expected
+            );
+            assert_eq!(
+                greatest_common_divisor_loop_euclides(first, second),
+                expected
+            );
+            assert_eq!(
+                greatest_common_divisor_simpler_but_slow(first, second),
+                expected
+            );
+        }
     }
 }
