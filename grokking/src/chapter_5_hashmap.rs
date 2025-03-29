@@ -2,7 +2,7 @@ use crate::chapter_4_stack::Stack;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::mem;
 
-struct HashMapEntry<K, V>
+struct HashTableEntry<K, V>
 where
     K: Hash + PartialEq,
 {
@@ -10,12 +10,12 @@ where
     value: V,
 }
 
-impl<K, V> HashMapEntry<K, V>
+impl<K, V> HashTableEntry<K, V>
 where
     K: Hash + PartialEq,
 {
     fn new(key: K, value: V) -> Self {
-        HashMapEntry { key, value }
+        HashTableEntry { key, value }
     }
 }
 
@@ -23,7 +23,7 @@ struct HashMap<K, V>
 where
     K: Hash + PartialEq,
 {
-    hash_table: Vec<Option<Stack<HashMapEntry<K, V>>>>,
+    hash_table: Vec<Option<Stack<HashTableEntry<K, V>>>>,
     number_of_values: u32,
 }
 
@@ -37,7 +37,7 @@ where
         (s.finish() % self.hash_table.len() as u64) as usize
     }
 
-    fn create_vector_of_nones(size: usize) -> Vec<Option<Stack<HashMapEntry<K, V>>>> {
+    fn create_vector_of_nones(size: usize) -> Vec<Option<Stack<HashTableEntry<K, V>>>> {
         let mut hash_table = Vec::with_capacity(size);
         for _ in 0..size {
             hash_table.push(None)
@@ -45,25 +45,24 @@ where
         hash_table
     }
 
-    fn maybe_resize(&mut self) {
-        let should_resize = 4 * self.number_of_values > 3 * self.hash_table.len() as u32;
+    fn maybe_resize_table(&mut self) {
+        let old_hash_table_len = self.hash_table.len();
+
+        let should_resize = 4 * self.number_of_values > 3 * old_hash_table_len as u32;
         if !should_resize {
             return;
         }
-        let preserved_number_of_values = self.number_of_values;
+
         let preserved_old_hash_table = mem::replace(
             &mut self.hash_table,
-            HashMap::create_vector_of_nones((preserved_number_of_values * 2) as usize),
+            HashMap::create_vector_of_nones(old_hash_table_len * 2),
         );
+        self.number_of_values = 0;
         preserved_old_hash_table
             .into_iter()
             .flatten()
-            .for_each(|stack| {
-                stack
-                    .drain()
-                    .for_each(|table_stack| self.insert(table_stack.key, table_stack.value))
-            });
-        self.number_of_values = preserved_number_of_values;
+            .flat_map(Stack::drain)
+            .for_each(|entry| self.insert_hash_table_entry(entry));
     }
 
     pub fn new() -> Self {
@@ -73,9 +72,11 @@ where
         }
     }
 
-    pub fn insert(&mut self, key: K, value: V) {
-        let hash = self.hash_key(&key);
-        let entry = HashMapEntry::new(key, value);
+    fn insert_hash_table_entry(
+        &mut self,
+        entry: HashTableEntry<K, V>
+    ) {
+        let hash = self.hash_key(&entry.key);
         match &mut self.hash_table[hash] {
             None => {
                 self.hash_table[hash] = {
@@ -92,6 +93,11 @@ where
                 }
             }
         }
+    }
+
+    pub fn insert(&mut self, key: K, value: V) {
+        self.insert_hash_table_entry(HashTableEntry {key, value});
+        self.maybe_resize_table();
     }
 
     pub fn get(&self, key_ref: &K) -> Option<&V> {
