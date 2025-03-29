@@ -5,7 +5,7 @@ struct Node<T> {
 
 impl<T> Node<T> {
     fn pop_next(&mut self) -> Link<T> {
-        let mut to_delete = self.next.take();
+        let to_delete = self.next.take();
         match to_delete {
             None => None,
             Some(mut to_delete) => {
@@ -91,14 +91,20 @@ impl<T> Stack<T> {
         None
     }
 
-    pub fn remove_by<F: Fn(&T) -> bool>(&mut self, check: F) {
-        let Some(node_previous_to_the_one) = self.find_node_mut(|node| match &node.next {
-            None => false,
-            Some(next) => check(&next.item)
-        }) else { return };
+    pub fn remove_by<F: Fn(&T) -> bool>(&mut self, check: F) -> Option<T> {
+        if let Some(head) = &mut self.head {
+            if check(&head.item) {
+                return self.pop_head();
+            }
+        }
 
-        let Some(mut the_one_node_to_remove) = node_previous_to_the_one.next.take() else { return };
+        let node_previous_to_the_one = self.find_node_mut(|node| match &node.next {
+            None => false,
+            Some(next) => check(&next.item),
+        })?;
+        let mut the_one_node_to_remove = node_previous_to_the_one.next.take()?;
         node_previous_to_the_one.next = the_one_node_to_remove.next.take();
+        Some(the_one_node_to_remove.item)
     }
 }
 
@@ -245,6 +251,19 @@ mod tests {
 
         assert_eq!(stack.pop_head(), Some(1));
         assert_eq!(stack.pop_head(), Some(3));
+        assert_eq!(stack.pop_head(), None);
+    }
+
+    #[test]
+    fn should_remove_head() {
+        let mut stack = Stack::empty();
+
+        stack.push_head(2);
+        stack.push_head(1);
+
+        stack.remove_by(|v| *v == 1);
+
+        assert_eq!(stack.pop_head(), Some(2));
         assert_eq!(stack.pop_head(), None);
     }
 }
