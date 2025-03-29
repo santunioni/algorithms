@@ -1,4 +1,4 @@
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
 struct Node<T> {
@@ -10,19 +10,13 @@ struct Node<T> {
 type NodeStrongRef<T> = Rc<RefCell<Node<T>>>;
 type NodeWeakRef<T> = Weak<RefCell<Node<T>>>;
 
-impl<T> From<Node<T>> for NodeStrongRef<T> {
-    fn from(value: Node<T>) -> Self {
-        Rc::new(RefCell::new(value))
-    }
-}
-
 impl<T> Node<T> {
-    fn new(item: T) -> Node<T> {
-        Node {
+    fn new(item: T) -> NodeStrongRef<T> {
+        Rc::new(RefCell::new(Node {
             item: Some(item),
             prev: None,
             next: None,
-        }
+        }))
     }
 
     fn pop(&mut self) -> (Option<NodeWeakRef<T>>, Option<T>, Option<NodeStrongRef<T>>) {
@@ -54,12 +48,12 @@ impl<T> Node<T> {
     fn append(self_ref: NodeStrongRef<T>, item: T) -> NodeWeakRef<T> {
         let mut self_ref_mut = self_ref.borrow_mut();
         let old_next = self_ref_mut.next.take();
-        let new_cell = Node {
-            item: Some(item),
-            prev: Some(Rc::downgrade(&self_ref)),
-            next: old_next,
-        }
-        .into();
+
+        let new_cell = Node::new(item);
+        let mut new_cell_borrow = new_cell.borrow_mut();
+        new_cell_borrow.prev = Some(Rc::downgrade(&self_ref));
+        new_cell_borrow.next = old_next;
+
         self_ref_mut.next = Some(Rc::clone(&new_cell));
         Rc::downgrade(&new_cell)
     }
@@ -67,14 +61,14 @@ impl<T> Node<T> {
     fn prepend(self_ref: NodeStrongRef<T>, item: T) -> NodeStrongRef<T> {
         let mut self_ref_mut = self_ref.borrow_mut();
         let old_prev = self_ref_mut.prev.take();
-        let new_cell = Node {
-            item: Some(item),
-            next: Some(Rc::clone(&self_ref)),
-            prev: old_prev,
-        }
-        .into();
+
+        let new_cell = Node::new(item);
+        let mut new_cell_borrow = new_cell.borrow_mut();
+        new_cell_borrow.next = Some(Rc::clone(&self_ref));
+        new_cell_borrow.prev = old_prev;
+
         self_ref_mut.prev = Some(Rc::downgrade(&new_cell));
-        new_cell
+        Rc::clone(&new_cell)
     }
 }
 
@@ -119,10 +113,6 @@ impl<T> Deque<T> {
         }
     }
 
-    fn get_first(&self) -> Option<Ref<Node<T>>> {
-        self.first.as_ref().map(|first| first.borrow())
-    }
-
     pub fn new(item: T) -> Deque<T> {
         let mut list = Self::empty();
         list.add_first(item);
@@ -137,7 +127,7 @@ impl<T> Deque<T> {
         self.first = Some(match self.first.take() {
             Some(first) => Node::prepend(first, new_first),
             None => {
-                let cell = Node::new(new_first).into();
+                let cell = Node::new(new_first);
                 self.last = Some(Rc::downgrade(&cell));
                 cell
             }
@@ -154,7 +144,7 @@ impl<T> Deque<T> {
         self.last = Some(match self.last.take().and_then(|v| v.upgrade()) {
             Some(last) => Node::append(last, new_last),
             None => {
-                let cell = Node::new(new_last).into();
+                let cell = Node::new(new_last);
                 self.first = Some(Rc::clone(&cell));
                 Rc::downgrade(&cell)
             }
