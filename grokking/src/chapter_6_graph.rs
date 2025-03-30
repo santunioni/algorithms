@@ -109,7 +109,6 @@ impl<T> Iterator for GraphNodeIterator<T> {
     }
 }
 
-
 fn destroy_all<T>(from_node: &Link<T>) {
     Node::breath_search_drain(from_node).count();
 }
@@ -129,9 +128,29 @@ fn extract_item_optional<T>(node: &Option<Link<T>>) -> Option<Ref<'_, T>> {
     node.as_ref().map(extract_item)
 }
 
+struct GraphItemIterator<T> {
+    graph_node_iterator: GraphNodeIterator<T>,
+    cursor: Option<Link<T>>,
+}
+
+impl<T> GraphItemIterator<T> {
+    fn new(graph_node_iterator: GraphNodeIterator<T>) -> Self {
+        GraphItemIterator {
+            cursor: None,
+            graph_node_iterator,
+        }
+    }
+
+    fn fetch(&mut self) -> Option<Ref<T>> {
+        self.cursor = self.graph_node_iterator.next();
+        let Some(ptr) = &self.cursor else { return None };
+        Some(Ref::map(ptr.borrow(), |b| &b.item))
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::chapter_6_graph::{destroy_all, extract_item, Node, NodeFactory};
+    use crate::chapter_6_graph::{destroy_all, extract_item, GraphItemIterator, Node, NodeFactory};
     use std::rc::Rc;
 
     #[test]
@@ -200,7 +219,24 @@ mod tests {
         let mut iter = Node::breath_search_iterator(&vini);
 
         assert_eq!(iter.next().unwrap().borrow().item, "Vinícius");
-        assert!(&iter.next().as_ref().map(extract_item).unwrap().contains("Bianca"));
+        assert!(
+            &iter
+                .next()
+                .as_ref()
+                .map(extract_item)
+                .unwrap()
+                .contains("Bianca")
+        );
+        assert!(iter.next().is_none());
+
+        for node in Node::breath_search_iterator(&vini) {
+            let item = &node.borrow().item;
+            println!("{}", item)
+        }
+
+        let mut iter_util = GraphItemIterator::new(Node::breath_search_iterator(&vini));
+        assert!(iter_util.fetch().unwrap().contains("Vinícius"));
+        assert!(&iter_util.fetch().unwrap().contains("Bianca"));
         assert!(iter.next().is_none());
     }
 }
