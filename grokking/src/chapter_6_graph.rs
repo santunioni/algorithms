@@ -110,7 +110,7 @@ impl<T> Iterator for GraphIterator<T> {
 }
 
 fn destroy_all<T>(from_node: &Link<T>) {
-    Node::breath_search_iterator(from_node).for_each(|node| node.borrow_mut().pointers.clear());
+    Node::breath_search_drain(from_node).count();
 }
 
 impl<T> Drop for Node<T> {
@@ -122,7 +122,7 @@ impl<T> Drop for Node<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::chapter_6_graph::{destroy_all, Node, NodeFactory};
+    use crate::chapter_6_graph::{Node, NodeFactory, destroy_all};
     use std::rc::Rc;
 
     #[test]
