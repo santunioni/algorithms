@@ -130,28 +130,32 @@ impl<T> Deque<T> {
     }
 
     pub fn pop_last(&mut self) -> Option<T> {
-        match self.last.take() {
-            None => None,
-            Some(node_weak_ref) => {
-                let node_strong_ref = Weak::upgrade(&node_weak_ref).unwrap();
-                let previous = node_strong_ref.borrow_mut().prev.take();
+        self.last.take().map(|node_weak_ref| {
+            let node_strong_ref = Weak::upgrade(&node_weak_ref).unwrap();
+            let previous = node_strong_ref.borrow_mut().prev.take();
 
-                if let Some(previous_weak_ref) = previous {
-                    if let Some(previous_strong_ref) = Weak::upgrade(&previous_weak_ref) {
-                        previous_strong_ref.borrow_mut().next.take();
-                        self.last = Some(Rc::downgrade(&previous_strong_ref));
-                        return Some(Deque::extract_strong_ref_item(node_strong_ref))
-                    }
+            if let Some(previous_weak_ref) = previous {
+                if let Some(previous_strong_ref) = Weak::upgrade(&previous_weak_ref) {
+                    previous_strong_ref.borrow_mut().next.take();
+                    self.last = Some(Rc::downgrade(&previous_strong_ref));
+                    return Deque::extract_strong_ref_item(node_strong_ref)
                 }
-
-                drop(node_strong_ref);
-                self.first.take().map(Deque::extract_strong_ref_item)
             }
-        }
+
+            drop(node_strong_ref);
+            self
+                .first
+                .take()
+                .map(Deque::extract_strong_ref_item)
+                .expect("Should have found head to be the last, because there arent previous references to last")
+        })
     }
 
     fn extract_strong_ref_item(strong_ref: NodeStrongRef<T>) -> T {
-        Rc::into_inner(strong_ref).unwrap().into_inner().item
+        Rc::into_inner(strong_ref)
+            .expect("Tried to extract value from Rc with multiple strong pointers")
+            .into_inner()
+            .item
     }
 }
 
