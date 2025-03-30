@@ -1,5 +1,5 @@
 use crate::chapter_5_hashset::HashSet;
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::collections::VecDeque;
 use std::rc::Rc;
 
@@ -16,20 +16,20 @@ impl<T> Node<T> {
         self.pointers.push(Rc::clone(other))
     }
 
-    fn breath_search_iterator(node: &Link<T>) -> GraphIterator<T> {
-        GraphIterator::new(node, false, Mode::Breath)
+    fn breath_search_iterator(node: &Link<T>) -> GraphNodeIterator<T> {
+        GraphNodeIterator::new(node, false, Mode::Breath)
     }
 
-    fn breath_search_drain(node: &Link<T>) -> GraphIterator<T> {
-        GraphIterator::new(node, true, Mode::Breath)
+    fn breath_search_drain(node: &Link<T>) -> GraphNodeIterator<T> {
+        GraphNodeIterator::new(node, true, Mode::Breath)
     }
 
-    fn depth_search_iterator(node: &Link<T>) -> GraphIterator<T> {
-        GraphIterator::new(node, false, Mode::Depth)
+    fn depth_search_iterator(node: &Link<T>) -> GraphNodeIterator<T> {
+        GraphNodeIterator::new(node, false, Mode::Depth)
     }
 
-    fn depth_search_drain(node: &Link<T>) -> GraphIterator<T> {
-        GraphIterator::new(node, true, Mode::Depth)
+    fn depth_search_drain(node: &Link<T>) -> GraphNodeIterator<T> {
+        GraphNodeIterator::new(node, true, Mode::Depth)
     }
 }
 
@@ -58,16 +58,16 @@ enum Mode {
     Breath,
 }
 
-struct GraphIterator<T> {
+struct GraphNodeIterator<T> {
     queue: VecDeque<Link<T>>,
     visited: HashSet<u64>,
     drain: bool,
     mode: Mode,
 }
 
-impl<T> GraphIterator<T> {
+impl<T> GraphNodeIterator<T> {
     fn new(node: &Link<T>, drain: bool, mode: Mode) -> Self {
-        let mut it = GraphIterator {
+        let mut it = GraphNodeIterator {
             queue: VecDeque::new(),
             visited: HashSet::new(),
             drain,
@@ -89,7 +89,7 @@ impl<T> GraphIterator<T> {
     }
 }
 
-impl<T> Iterator for GraphIterator<T> {
+impl<T> Iterator for GraphNodeIterator<T> {
     type Item = Link<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -109,6 +109,7 @@ impl<T> Iterator for GraphIterator<T> {
     }
 }
 
+
 fn destroy_all<T>(from_node: &Link<T>) {
     Node::breath_search_drain(from_node).count();
 }
@@ -120,9 +121,17 @@ impl<T> Drop for Node<T> {
     }
 }
 
+fn extract_item<T>(node: &Link<T>) -> Ref<'_, T> {
+    Ref::map(node.borrow(), |b| &b.item)
+}
+
+fn extract_item_optional<T>(node: &Option<Link<T>>) -> Option<Ref<'_, T>> {
+    node.as_ref().map(extract_item)
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::chapter_6_graph::{Node, NodeFactory, destroy_all};
+    use crate::chapter_6_graph::{destroy_all, extract_item, Node, NodeFactory};
     use std::rc::Rc;
 
     #[test]
@@ -174,7 +183,7 @@ mod tests {
     }
 
     #[test]
-    fn should_iter() {
+    fn should_iter_on_nodes() {
         let mut node_factory = NodeFactory::new();
         let vini = node_factory.create_node("Vinícius".to_string());
         let bibi = node_factory.create_node("Bianca".to_string());
@@ -182,10 +191,16 @@ mod tests {
         vini.borrow_mut().attach(&bibi);
         bibi.borrow_mut().attach(&vini);
 
-        let mut iter = Node::breath_search_drain(&vini);
+        let mut iter = Node::breath_search_iterator(&vini);
 
         assert_eq!(iter.next().unwrap().borrow().item, "Vinícius");
         assert_eq!(iter.next().unwrap().borrow().item, "Bianca");
+        assert!(iter.next().is_none());
+
+        let mut iter = Node::breath_search_iterator(&vini);
+
+        assert_eq!(iter.next().unwrap().borrow().item, "Vinícius");
+        assert!(&iter.next().as_ref().map(extract_item).unwrap().contains("Bianca"));
         assert!(iter.next().is_none());
     }
 }
