@@ -2,7 +2,7 @@ use crate::chapter_4_stack::Stack;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::mem;
 
-struct HashSet<K>
+pub struct HashSet<K>
 where
     K: Hash + PartialEq,
 {

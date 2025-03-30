@@ -12,3 +12,4 @@ pub mod chapter_4_recursive_binary_search;
 mod chapter_4_stack;
 mod chapter_5_hashmap;
 mod chapter_5_hashset;
+mod chapter_6_graph;
