@@ -97,24 +97,7 @@ impl<T: PartialOrd> AVLTree<T> {
     }
 
     fn is_balanced(&self) -> bool {
-        Self::is_deep_balanced(&self.root)
-    }
-
-    fn is_deep_balanced(node: &Node<T>) -> bool {
-        if !node.is_balanced() {
-            return false;
-        }
-        if let Some(left) = &node.left {
-            if !Self::is_deep_balanced(left) {
-                return false;
-            }
-        };
-        if let Some(right) = &node.right {
-            if !Self::is_deep_balanced(right) {
-                return false;
-            }
-        };
-        true
+        self.root.is_deep_balanced()
     }
 }
 
