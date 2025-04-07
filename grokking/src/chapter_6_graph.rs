@@ -150,7 +150,7 @@ impl<T> GraphItemIterator<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::chapter_6_graph::{destroy_all, extract_item, GraphItemIterator, Node, NodeFactory};
+    use crate::chapter_6_graph::{GraphItemIterator, Node, NodeFactory, destroy_all, extract_item};
     use std::rc::Rc;
 
     #[test]
