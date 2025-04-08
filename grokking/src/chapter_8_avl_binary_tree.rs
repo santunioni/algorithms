@@ -7,7 +7,7 @@ struct Node<T> {
     right: Option<Box<Node<T>>>,
 }
 
-impl<T> Node<T> {
+impl<T: PartialOrd> Node<T> {
     fn new(item: T) -> Box<Self> {
         Box::new(Node {
             item,
@@ -37,6 +37,42 @@ impl<T> Node<T> {
         };
         true
     }
+
+    fn node_contains_deep(&self, item: &T) -> bool {
+        match item.partial_cmp(&self.item) {
+            None => false,
+            Some(Ordering::Equal) => true,
+            Some(Ordering::Less) => match &self.left {
+                None => false,
+                Some(left) => left.node_contains_deep(item),
+            },
+            Some(Ordering::Greater) => match &self.right {
+                None => false,
+                Some(right) => right.node_contains_deep(item),
+            },
+        }
+    }
+
+
+    fn add_neighbor(&mut self, neighbor: Box<Node<T>>) {
+        if neighbor.item >= self.item {
+            match &mut self.right {
+                Some(self_right) => {
+                    self_right.add_neighbor(neighbor);
+                }
+                None => self.right = Some(neighbor),
+            }
+            self.balance_factor += 1;
+        } else {
+            match &mut self.left {
+                Some(self_left) => {
+                    self_left.add_neighbor(neighbor);
+                }
+                None => self.left = Some(neighbor),
+            }
+            self.balance_factor -= 1;
+        }
+    }
 }
 
 struct AVLTree<T: PartialOrd> {
@@ -53,47 +89,11 @@ impl<T: PartialOrd> AVLTree<T> {
 
 impl<T: PartialOrd> AVLTree<T> {
     fn add(&mut self, item: T) {
-        AVLTree::add_neighbor(&mut self.root, Node::new(item));
-    }
-
-    fn add_neighbor(node: &mut Node<T>, neighbor: Box<Node<T>>) -> i8 {
-        if neighbor.item >= node.item {
-            match &mut node.right {
-                Some(right) => {
-                    AVLTree::add_neighbor(right, neighbor);
-                }
-                None => node.right = Some(neighbor),
-            }
-            node.balance_factor += 1;
-        } else {
-            match &mut node.left {
-                Some(left) => {
-                    AVLTree::add_neighbor(left, neighbor);
-                }
-                None => node.left = Some(neighbor),
-            }
-            node.balance_factor -= 1;
-        }
-        node.balance_factor
+        self.root.add_neighbor(Node::new(item));
     }
 
     fn contains(&self, item: &T) -> bool {
-        Self::exists_in_node(&self.root, item)
-    }
-
-    fn exists_in_node(node: &Node<T>, item: &T) -> bool {
-        match item.partial_cmp(&node.item) {
-            None => false,
-            Some(Ordering::Equal) => true,
-            Some(Ordering::Less) => match &node.left {
-                None => false,
-                Some(left) => Self::exists_in_node(left, item),
-            },
-            Some(Ordering::Greater) => match &node.right {
-                None => false,
-                Some(right) => Self::exists_in_node(right, item),
-            },
-        }
+        self.root.node_contains_deep(item)
     }
 
     fn is_balanced(&self) -> bool {
