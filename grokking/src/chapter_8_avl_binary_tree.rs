@@ -210,9 +210,8 @@ impl<K: Ord, T> AVLTree<K, T> {
         };
     }
 
-    fn contains(&self, item: &T) -> bool {
-        let extract_key = self.extract_key;
-        self.find(extract_key(item)).is_some()
+    fn contains(&self, key: &K) -> bool {
+        self.find(key).is_some()
     }
 
     fn find(&self, key: &K) -> Option<&T> {
@@ -307,17 +306,11 @@ mod tests {
             name: "José".to_string(),
         });
 
-        assert!(tree.contains(&Person {
-            name: "Vinícius".to_string()
-        }));
         assert_eq!(
             tree.find(&"Vinícius".to_string()).unwrap().name,
             "Vinícius".to_string()
         );
 
-        assert!(!tree.contains(&Person {
-            name: "João".to_string()
-        }));
         assert!(tree.find(&"João".to_string()).is_none());
     }
 }
