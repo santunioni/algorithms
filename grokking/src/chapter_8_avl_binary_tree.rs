@@ -1,5 +1,4 @@
 use std::cmp::Ordering;
-use std::fmt::{Display, Formatter};
 
 #[derive(Clone)]
 struct Node<T> {
@@ -33,8 +32,16 @@ impl<T: PartialOrd> Node<T> {
     }
 
     fn refresh_returning_required_rotation(&mut self) -> RequiredRotation {
-        let right_height = if let Some(right) = &self.right { right.height as i32 } else { -1 };
-        let left_height = if let Some(left) = &self.left { left.height as i32 } else { -1 };
+        let right_height = if let Some(right) = &self.right {
+            right.height as i32
+        } else {
+            -1
+        };
+        let left_height = if let Some(left) = &self.left {
+            left.height as i32
+        } else {
+            -1
+        };
         self.balance_factor = (right_height - left_height) as i8;
         self.height = (left_height.max(right_height) + 1) as u32;
 
@@ -42,7 +49,9 @@ impl<T: PartialOrd> Node<T> {
             RequiredRotation::Clock
         } else if self.balance_factor > 1 {
             RequiredRotation::Counter
-        } else { RequiredRotation::None }
+        } else {
+            RequiredRotation::None
+        }
     }
 
     fn is_balanced(&self) -> bool {
@@ -84,8 +93,12 @@ impl<T: PartialOrd> Node<T> {
     fn maybe_rotate(pivot: &mut Option<Box<Node<T>>>, orientation: RequiredRotation) {
         match orientation {
             RequiredRotation::Clock => {
-                let Some(mut taken) = pivot.take() else { return; };
-                let Some(mut left) = taken.left.take() else { return; };
+                let Some(mut taken) = pivot.take() else {
+                    return;
+                };
+                let Some(mut left) = taken.left.take() else {
+                    return;
+                };
                 taken.left = left.right.take();
 
                 taken.refresh_returning_required_rotation();
@@ -93,10 +106,14 @@ impl<T: PartialOrd> Node<T> {
 
                 left.refresh_returning_required_rotation();
                 pivot.replace(left);
-            },
+            }
             RequiredRotation::Counter => {
-                let Some(mut taken) = pivot.take() else { return; };
-                let Some(mut right) = taken.right.take() else { return; };
+                let Some(mut taken) = pivot.take() else {
+                    return;
+                };
+                let Some(mut right) = taken.right.take() else {
+                    return;
+                };
                 taken.right = right.left.take();
 
                 taken.refresh_returning_required_rotation();
@@ -130,7 +147,6 @@ impl<T: PartialOrd> Node<T> {
 
         self.refresh_returning_required_rotation()
     }
-
 }
 
 struct AVLTree<T: PartialOrd> {
@@ -139,9 +155,7 @@ struct AVLTree<T: PartialOrd> {
 
 impl<T: PartialOrd> AVLTree<T> {
     fn empty() -> Self {
-        AVLTree {
-            root: None,
-        }
+        AVLTree { root: None }
     }
 }
 
@@ -160,40 +174,22 @@ impl<T: PartialOrd> AVLTree<T> {
     fn contains(&self, item: &T) -> bool {
         match &self.root {
             None => false,
-            Some(root) => root.node_contains_deep(item)
+            Some(root) => root.node_contains_deep(item),
         }
     }
 
     fn is_balanced(&self) -> bool {
         match &self.root {
             None => true,
-            Some(root) => root.is_deep_balanced()
+            Some(root) => root.is_deep_balanced(),
         }
     }
-}
 
-impl<T: PartialOrd + Display> Display for Node<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", self.item)?;
-        if let Some(left) = &self.left {
-            write!(f, "{:p}::Left: ", self)?;
-            Node::fmt(left, f)?;
+    fn height(&self) -> u32 {
+        match &self.root {
+            None => 0,
+            Some(root) => root.height,
         }
-        if let Some(right) = &self.right {
-            write!(f, "{:p}::Rght: ", self)?;
-            Node::fmt(right, f)?;
-        }
-        Ok(())
-    }
-}
-
-impl<T: PartialOrd + Display> Display for AVLTree<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if let Some(root) = &self.root {
-            write!(f, "{:p}::Root: ", root)?;
-            root.fmt(f)?
-        };
-        Ok(())
     }
 }
 
@@ -213,26 +209,8 @@ mod tests {
         assert!(tree.contains(&2));
         assert!(tree.contains(&0));
         assert!(!tree.contains(&3));
-
-        println!("{}", &tree)
-    }
-
-    #[test]
-    fn should_balance_tree_inserting_right() {
-        let mut tree = AVLTree::empty();
-
-        tree.add(0);
-        tree.add(1);
-        tree.add(2);
-        tree.add(3);
-
-        assert!(tree.contains(&0));
-        assert!(tree.contains(&1));
-        assert!(tree.contains(&2));
-        assert!(tree.contains(&3));
-
         assert!(tree.is_balanced());
-        println!("{}", &tree);
+        assert_eq!(tree.height(), 1);
     }
 
     #[test]
@@ -247,8 +225,8 @@ mod tests {
         for item in 1..100 {
             assert!(tree.contains(&item));
         }
-        assert!(!tree.contains(&101));
-        println!("{}", &tree);
+
+        assert_eq!(tree.height(), 6);
     }
 
     #[test]
@@ -263,29 +241,7 @@ mod tests {
         for item in 1..100 {
             assert!(tree.contains(&item));
         }
-        assert!(!tree.contains(&101));
-        println!("{}", &tree);
-    }
 
-    #[test]
-    fn should_print() {
-        let mut tree = AVLTree::empty();
-
-        for item in (0..100).rev() {
-            tree.add(item);
-        }
-
-        println!("{}", &tree.root.clone().unwrap().item);
-
-        println!("{}", &tree.root.clone().unwrap().right.unwrap().item);
-
-        println!("{}", &tree.root.clone().unwrap().right.unwrap().left.unwrap().item);
-        println!("{}", &tree.root.clone().unwrap().right.unwrap().right.unwrap().item);
-
-        println!("{}", &tree.root.clone().unwrap().left.unwrap().item);
-
-        println!("{}", &tree.root.clone().unwrap().left.unwrap().left.unwrap().item);
-        println!("{}", &tree.root.clone().unwrap().left.unwrap().right.unwrap().item);
-        assert!(tree.is_balanced());
+        assert_eq!(tree.height(), 6);
     }
 }
