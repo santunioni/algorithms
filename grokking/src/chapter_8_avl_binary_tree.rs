@@ -3,8 +3,7 @@ use std::cmp::Ordering;
 #[derive(Clone)]
 struct Node<T> {
     item: T,
-    height: u32,
-    balance_factor: i8,
+    height: u16,
     left: Option<Box<Node<T>>>,
     right: Option<Box<Node<T>>>,
 }
@@ -27,35 +26,53 @@ impl<T: PartialOrd> Node<T> {
             left: None,
             right: None,
             height: 0,
-            balance_factor: 0,
         })
     }
 
-    fn refresh_returning_required_rotation(&mut self) -> RequiredRotation {
-        let right_height = if let Some(right) = &self.right {
-            right.height as i32
-        } else {
-            -1
-        };
-        let left_height = if let Some(left) = &self.left {
-            left.height as i32
-        } else {
-            -1
-        };
-        self.balance_factor = (right_height - left_height) as i8;
-        self.height = (left_height.max(right_height) + 1) as u32;
+    fn refresh_metadata(&mut self) {
+        match (&self.left, &self.right) {
+            (None, None) => {
+                self.height = 0;
+            }
+            (Some(left), None) => {
+                self.height = left.height + 1;
+            }
+            (None, Some(right)) => {
+                self.height = right.height + 1;
+            }
+            (Some(left), Some(right)) => {
+                self.height = left.height.max(right.height) + 1;
+            }
+        }
+    }
 
-        if self.balance_factor < -1 {
-            RequiredRotation::Clock
-        } else if self.balance_factor > 1 {
-            RequiredRotation::Counter
-        } else {
-            RequiredRotation::None
+    fn get_required_rotation(&self) -> RequiredRotation {
+        match (&self.left, &self.right) {
+            (None, None) => RequiredRotation::None,
+            (Some(left), None) => {
+                if left.height > 1 {
+                    RequiredRotation::Clock
+                } else {
+                    RequiredRotation::None
+                }
+            }
+            (None, Some(right)) => {
+                if right.height > 1 {
+                    RequiredRotation::Counter
+                } else {
+                    RequiredRotation::None
+                }
+            }
+            (Some(left), Some(right)) => match right.height as i32 - left.height as i32 {
+                (2..) => RequiredRotation::Counter,
+                (..=-2) => RequiredRotation::Clock,
+                _ => RequiredRotation::None,
+            },
         }
     }
 
     fn is_balanced(&self) -> bool {
-        (-1..=1).contains(&self.balance_factor)
+        matches!(self.get_required_rotation(), RequiredRotation::None)
     }
 
     fn is_deep_balanced(&self) -> bool {
@@ -101,10 +118,10 @@ impl<T: PartialOrd> Node<T> {
                 };
                 taken.left = left.right.take();
 
-                taken.refresh_returning_required_rotation();
+                taken.refresh_metadata();
                 left.right = Some(taken);
 
-                left.refresh_returning_required_rotation();
+                left.refresh_metadata();
                 pivot.replace(left);
             }
             RequiredRotation::Counter => {
@@ -116,10 +133,10 @@ impl<T: PartialOrd> Node<T> {
                 };
                 taken.right = right.left.take();
 
-                taken.refresh_returning_required_rotation();
+                taken.refresh_metadata();
                 right.left = Some(taken);
 
-                right.refresh_returning_required_rotation();
+                right.refresh_metadata();
                 pivot.replace(right);
             }
             RequiredRotation::None => {}
@@ -145,7 +162,8 @@ impl<T: PartialOrd> Node<T> {
             }
         }
 
-        self.refresh_returning_required_rotation()
+        self.refresh_metadata();
+        self.get_required_rotation()
     }
 }
 
@@ -185,7 +203,7 @@ impl<T: PartialOrd> AVLTree<T> {
         }
     }
 
-    fn height(&self) -> u32 {
+    fn height(&self) -> u16 {
         match &self.root {
             None => 0,
             Some(root) => root.height,
@@ -226,7 +244,7 @@ mod tests {
             assert!(tree.contains(&item));
         }
 
-        assert_eq!(tree.height(), 6);
+        assert_eq!(tree.height(), 7);
     }
 
     #[test]
@@ -242,6 +260,6 @@ mod tests {
             assert!(tree.contains(&item));
         }
 
-        assert_eq!(tree.height(), 6);
+        assert_eq!(tree.height(), 7);
     }
 }
