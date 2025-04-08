@@ -1,11 +1,14 @@
 use std::cmp::Ordering;
 
+type Comparator<T> = fn(&T, &T) -> Option<Ordering>;
+
 #[derive(Clone)]
 struct Node<T> {
     item: T,
     height: u16,
     left: Option<Box<Node<T>>>,
     right: Option<Box<Node<T>>>,
+    comparator: Comparator<T>,
 }
 
 enum Side {
@@ -19,13 +22,14 @@ enum RequiredRotation {
     None,
 }
 
-impl<T: PartialOrd> Node<T> {
-    fn new(item: T) -> Box<Self> {
+impl<T> Node<T> {
+    fn new(item: T, comparator: Comparator<T>) -> Box<Self> {
         Box::new(Node {
             item,
             left: None,
             right: None,
             height: 0,
+            comparator,
         })
     }
 
@@ -93,7 +97,8 @@ impl<T: PartialOrd> Node<T> {
     }
 
     fn node_contains_deep(&self, item: &T) -> bool {
-        match item.partial_cmp(&self.item) {
+        let comparator = self.comparator;
+        match comparator(item, &self.item) {
             None => false,
             Some(Ordering::Equal) => true,
             Some(Ordering::Less) => match &self.left {
@@ -144,45 +149,58 @@ impl<T: PartialOrd> Node<T> {
     }
 
     fn add_neighbor(&mut self, neighbor: Box<Node<T>>) -> RequiredRotation {
-        if neighbor.item >= self.item {
-            match &mut self.right {
+        let comparator = self.comparator;
+        match comparator(&self.item, &neighbor.item) {
+            Some(Ordering::Less) => match &mut self.right {
                 Some(self_right) => {
                     let rotation = self_right.add_neighbor(neighbor);
                     Self::maybe_rotate(&mut self.right, rotation)
                 }
                 None => self.right = Some(neighbor),
-            }
-        } else {
-            match &mut self.left {
+            },
+            _ => match &mut self.left {
                 Some(self_left) => {
                     let rotation = self_left.add_neighbor(neighbor);
                     Self::maybe_rotate(&mut self.left, rotation)
                 }
                 None => self.left = Some(neighbor),
-            }
-        }
+            },
+        };
 
         self.refresh_metadata();
         self.get_required_rotation()
     }
 }
 
-struct AVLTree<T: PartialOrd> {
+struct AVLTree<T> {
     root: Option<Box<Node<T>>>,
+    comparator: Comparator<T>,
 }
 
 impl<T: PartialOrd> AVLTree<T> {
     fn empty() -> Self {
-        AVLTree { root: None }
+        AVLTree {
+            root: None,
+            comparator: |this, that| this.partial_cmp(that),
+        }
     }
 }
 
-impl<T: PartialOrd> AVLTree<T> {
+impl<T> AVLTree<T> {
+    fn new(compare: Comparator<T>) -> Self {
+        AVLTree {
+            root: None,
+            comparator: compare,
+        }
+    }
+}
+
+impl<T> AVLTree<T> {
     fn add(&mut self, item: T) {
         match &mut self.root {
-            None => self.root = Some(Node::new(item)),
+            None => self.root = Some(Node::new(item, self.comparator)),
             Some(root) => {
-                let neighbor = Node::new(item);
+                let neighbor = Node::new(item, self.comparator);
                 let rotation = root.add_neighbor(neighbor);
                 Node::maybe_rotate(&mut self.root, rotation)
             }
@@ -261,5 +279,21 @@ mod tests {
         }
 
         assert_eq!(tree.height(), 7);
+    }
+
+    #[test]
+    fn should_add_non_comparable_if_providing_comparator() {
+        struct Person {
+            name: String,
+        }
+
+        let mut tree = AVLTree::<Person>::new(|u, v| u.name.partial_cmp(&v.name));
+
+        tree.add(Person { name: "Vinícius".to_string() });
+        tree.add(Person { name: "Bianca".to_string() });
+        tree.add(Person { name: "José".to_string() });
+
+        assert!(tree.contains(&Person { name: "Vinícius".to_string() }));
+        assert!(!tree.contains(&Person { name: "João".to_string() }));
     }
 }
