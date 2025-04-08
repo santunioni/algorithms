@@ -1,14 +1,12 @@
-use std::cmp::Ordering;
-
-type Comparator<T> = fn(&T, &T) -> Option<Ordering>;
+type ExtractKey<K, T> = fn(&T) -> &K;
 
 #[derive(Clone)]
-struct Node<T> {
+struct Node<K: Ord, T> {
     item: T,
     height: u16,
-    left: Option<Box<Node<T>>>,
-    right: Option<Box<Node<T>>>,
-    comparator: Comparator<T>,
+    left: Option<Box<Node<K, T>>>,
+    right: Option<Box<Node<K, T>>>,
+    extract_key: ExtractKey<K, T>,
 }
 
 enum Side {
@@ -22,14 +20,14 @@ enum RequiredRotation {
     None,
 }
 
-impl<T> Node<T> {
-    fn new(item: T, comparator: Comparator<T>) -> Box<Self> {
+impl<K: Ord, T> Node<K, T> {
+    fn new(item: T, extract_key: ExtractKey<K, T>) -> Box<Self> {
         Box::new(Node {
             item,
             left: None,
             right: None,
             height: 0,
-            comparator,
+            extract_key,
         })
     }
 
@@ -96,23 +94,26 @@ impl<T> Node<T> {
         true
     }
 
-    fn node_contains_deep(&self, item: &T) -> bool {
-        let comparator = self.comparator;
-        match comparator(item, &self.item) {
-            None => false,
-            Some(Ordering::Equal) => true,
-            Some(Ordering::Less) => match &self.left {
-                None => false,
-                Some(left) => left.node_contains_deep(item),
-            },
-            Some(Ordering::Greater) => match &self.right {
-                None => false,
-                Some(right) => right.node_contains_deep(item),
-            },
+    fn node_find_deep(&self, key: &K) -> Option<&T> {
+        let extract_key = self.extract_key;
+        let self_key = extract_key(&self.item);
+
+        if key == self_key {
+            Some(&self.item)
+        } else if key < self_key {
+            match &self.left {
+                None => None,
+                Some(left) => left.node_find_deep(key),
+            }
+        } else {
+            match &self.right {
+                None => None,
+                Some(right) => right.node_find_deep(key),
+            }
         }
     }
 
-    fn maybe_rotate(pivot: &mut Option<Box<Node<T>>>, orientation: RequiredRotation) {
+    fn maybe_rotate(pivot: &mut Option<Box<Self>>, orientation: RequiredRotation) {
         match orientation {
             RequiredRotation::Clock => {
                 let Some(mut taken) = pivot.take() else {
@@ -148,59 +149,63 @@ impl<T> Node<T> {
         }
     }
 
-    fn add_neighbor(&mut self, neighbor: Box<Node<T>>) -> RequiredRotation {
-        let comparator = self.comparator;
-        match comparator(&self.item, &neighbor.item) {
-            Some(Ordering::Less) => match &mut self.right {
+    fn add_neighbor(&mut self, neighbor: Box<Self>) -> RequiredRotation {
+        let extract_key = self.extract_key;
+        let self_key = extract_key(&self.item);
+        let other_key = extract_key(&neighbor.item);
+
+        if other_key > self_key {
+            match &mut self.right {
                 Some(self_right) => {
                     let rotation = self_right.add_neighbor(neighbor);
                     Self::maybe_rotate(&mut self.right, rotation)
                 }
                 None => self.right = Some(neighbor),
-            },
-            _ => match &mut self.left {
+            }
+        } else {
+            match &mut self.left {
                 Some(self_left) => {
                     let rotation = self_left.add_neighbor(neighbor);
                     Self::maybe_rotate(&mut self.left, rotation)
                 }
                 None => self.left = Some(neighbor),
-            },
-        };
+            }
+        }
 
         self.refresh_metadata();
         self.get_required_rotation()
     }
 }
 
-struct AVLTree<T> {
-    root: Option<Box<Node<T>>>,
-    comparator: Comparator<T>,
+struct AVLTree<K: Ord, T> {
+    root: Option<Box<Node<K, T>>>,
+    extract_key: ExtractKey<K, T>,
 }
 
-impl<T: PartialOrd> AVLTree<T> {
+impl<T: Ord> AVLTree<T, T> {
     fn empty() -> Self {
         AVLTree {
             root: None,
-            comparator: |this, that| this.partial_cmp(that),
+            extract_key: |v| v,
         }
     }
 }
 
-impl<T> AVLTree<T> {
-    fn new(compare: Comparator<T>) -> Self {
+impl<K: Ord, T> AVLTree<K, T> {
+    fn new(extract_key: ExtractKey<K, T>) -> Self {
         AVLTree {
             root: None,
-            comparator: compare,
+            extract_key,
         }
     }
 }
 
-impl<T> AVLTree<T> {
+impl<K: Ord, T> AVLTree<K, T> {
     fn add(&mut self, item: T) {
         match &mut self.root {
-            None => self.root = Some(Node::new(item, self.comparator)),
+            None => self.root = Some(Node::new(item, self.extract_key)),
             Some(root) => {
-                let neighbor = Node::new(item, self.comparator);
+                let neighbor = Node::new(item, self.extract_key);
                 let rotation = root.add_neighbor(neighbor);
                 Node::maybe_rotate(&mut self.root, rotation)
             }
@@ -208,9 +213,14 @@ impl<T> AVLTree<T> {
     }
 
     fn contains(&self, item: &T) -> bool {
+        let extract_key = self.extract_key;
+        self.find(extract_key(item)).is_some()
+    }
+
+    fn find(&self, key: &K) -> Option<&T> {
         match &self.root {
-            None => false,
-            Some(root) => root.node_contains_deep(item),
+            None => None,
+            Some(root) => root.node_find_deep(key),
         }
     }
 
@@ -287,13 +297,29 @@ mod tests {
             name: String,
         }
 
-        let mut tree = AVLTree::<Person>::new(|u, v| u.name.partial_cmp(&v.name));
+        let mut tree = AVLTree::<String, Person>::new(|u| &u.name);
 
-        tree.add(Person { name: "Vinícius".to_string() });
-        tree.add(Person { name: "Bianca".to_string() });
-        tree.add(Person { name: "José".to_string() });
+        tree.add(Person {
+            name: "Vinícius".to_string(),
+        });
+        tree.add(Person {
+            name: "Bianca".to_string(),
+        });
+        tree.add(Person {
+            name: "José".to_string(),
+        });
 
-        assert!(tree.contains(&Person { name: "Vinícius".to_string() }));
-        assert!(!tree.contains(&Person { name: "João".to_string() }));
+        assert!(tree.contains(&Person {
+            name: "Vinícius".to_string()
+        }));
+        assert_eq!(
+            tree.find(&"Vinícius".to_string()).unwrap().name,
+            "Vinícius".to_string()
+        );
+
+        assert!(!tree.contains(&Person {
+            name: "João".to_string()
+        }));
+        assert!(tree.find(&"João".to_string()).is_none());
     }
 }
