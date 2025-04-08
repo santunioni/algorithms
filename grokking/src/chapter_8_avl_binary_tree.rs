@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 type ExtractKey<K, T> = fn(&T) -> &K;
 
 #[derive(Clone)]
@@ -94,22 +96,19 @@ impl<K: Ord, T> Node<K, T> {
         true
     }
 
-    fn node_find_deep(&self, key: &K) -> Option<&T> {
+    fn node_find_deep(&self, lookup_key: &K) -> Option<&T> {
         let extract_key = self.extract_key;
         let self_key = extract_key(&self.item);
-
-        if key == self_key {
-            Some(&self.item)
-        } else if key < self_key {
-            match &self.left {
+        match self_key.cmp(lookup_key) {
+            Ordering::Equal => Some(&self.item),
+            Ordering::Less => match &self.right {
                 None => None,
-                Some(left) => left.node_find_deep(key),
-            }
-        } else {
-            match &self.right {
+                Some(right) => right.node_find_deep(lookup_key),
+            },
+            Ordering::Greater => match &self.left {
                 None => None,
-                Some(right) => right.node_find_deep(key),
-            }
+                Some(left) => left.node_find_deep(lookup_key),
+            },
         }
     }
 
@@ -152,24 +151,23 @@ impl<K: Ord, T> Node<K, T> {
     fn add_neighbor(&mut self, neighbor: Box<Self>) -> RequiredRotation {
         let extract_key = self.extract_key;
         let self_key = extract_key(&self.item);
-        let other_key = extract_key(&neighbor.item);
+        let lookup_key = extract_key(&neighbor.item);
 
-        if other_key > self_key {
-            match &mut self.right {
+        match self_key.cmp(lookup_key) {
+            Ordering::Less => match &mut self.right {
                 Some(self_right) => {
                     let rotation = self_right.add_neighbor(neighbor);
                     Self::maybe_rotate(&mut self.right, rotation)
                 }
                 None => self.right = Some(neighbor),
-            }
-        } else {
-            match &mut self.left {
+            },
+            Ordering::Greater | Ordering::Equal => match &mut self.left {
                 Some(self_left) => {
                     let rotation = self_left.add_neighbor(neighbor);
                     Self::maybe_rotate(&mut self.left, rotation)
                 }
                 None => self.left = Some(neighbor),
-            }
+            },
         }
 
         self.refresh_metadata();
