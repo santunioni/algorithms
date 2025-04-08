@@ -4,6 +4,7 @@ use std::fmt::{Display, Formatter};
 #[derive(Clone)]
 struct Node<T> {
     item: T,
+    height: u32,
     balance_factor: i8,
     left: Option<Box<Node<T>>>,
     right: Option<Box<Node<T>>>,
@@ -14,7 +15,7 @@ enum Side {
     Right,
 }
 
-enum Rotation {
+enum RequiredRotation {
     Clock,
     Counter,
     None,
@@ -26,12 +27,26 @@ impl<T: PartialOrd> Node<T> {
             item,
             left: None,
             right: None,
+            height: 0,
             balance_factor: 0,
         })
     }
 
+    fn refresh_returning_required_rotation(&mut self) -> RequiredRotation {
+        let right_height = if let Some(right) = &self.right { right.height as i32 } else { -1 };
+        let left_height = if let Some(left) = &self.left { left.height as i32 } else { -1 };
+        self.balance_factor = (right_height - left_height) as i8;
+        self.height = (left_height.max(right_height) + 1) as u32;
+
+        if self.balance_factor < -1 {
+            RequiredRotation::Clock
+        } else if self.balance_factor > 1 {
+            RequiredRotation::Counter
+        } else { RequiredRotation::None }
+    }
+
     fn is_balanced(&self) -> bool {
-        -1 <= self.balance_factor && self.balance_factor <= 1
+        (-1..=1).contains(&self.balance_factor)
     }
 
     fn is_deep_balanced(&self) -> bool {
@@ -66,56 +81,54 @@ impl<T: PartialOrd> Node<T> {
         }
     }
 
-    fn rotate_pivot(pivot: &mut Option<Box<Node<T>>>, orientation: Rotation) {
+    fn maybe_rotate(pivot: &mut Option<Box<Node<T>>>, orientation: RequiredRotation) {
         match orientation {
-            Rotation::Clock => {
+            RequiredRotation::Clock => {
                 let Some(mut taken) = pivot.take() else { return; };
                 let Some(mut left) = taken.left.take() else { return; };
                 taken.left = left.right.take();
-                taken.balance_factor += 2;
-                left.balance_factor += 1;
+
+                taken.refresh_returning_required_rotation();
                 left.right = Some(taken);
+
+                left.refresh_returning_required_rotation();
                 pivot.replace(left);
             },
-            Rotation::Counter => {
+            RequiredRotation::Counter => {
                 let Some(mut taken) = pivot.take() else { return; };
                 let Some(mut right) = taken.right.take() else { return; };
                 taken.right = right.left.take();
-                taken.balance_factor -= 2;
-                right.balance_factor -= 1;
+
+                taken.refresh_returning_required_rotation();
                 right.left = Some(taken);
+
+                right.refresh_returning_required_rotation();
                 pivot.replace(right);
             }
-            Rotation::None => {}
+            RequiredRotation::None => {}
         }
     }
 
-    fn add_neighbor(&mut self, neighbor: Box<Node<T>>) -> Rotation {
+    fn add_neighbor(&mut self, neighbor: Box<Node<T>>) -> RequiredRotation {
         if neighbor.item >= self.item {
             match &mut self.right {
                 Some(self_right) => {
                     let rotation = self_right.add_neighbor(neighbor);
-                    Self::rotate_pivot(&mut self.right, rotation)
+                    Self::maybe_rotate(&mut self.right, rotation)
                 }
                 None => self.right = Some(neighbor),
             }
-            self.balance_factor += 1;
         } else {
             match &mut self.left {
                 Some(self_left) => {
                     let rotation = self_left.add_neighbor(neighbor);
-                    Self::rotate_pivot(&mut self.left, rotation)
+                    Self::maybe_rotate(&mut self.left, rotation)
                 }
                 None => self.left = Some(neighbor),
             }
-            self.balance_factor -= 1;
         }
 
-        if self.balance_factor < -1 {
-            Rotation::Clock
-        } else if self.balance_factor > 1 {
-            Rotation::Counter
-        } else { Rotation::None }
+        self.refresh_returning_required_rotation()
     }
 
 }
@@ -139,7 +152,7 @@ impl<T: PartialOrd> AVLTree<T> {
             Some(root) => {
                 let neighbor = Node::new(item);
                 let rotation = root.add_neighbor(neighbor);
-                Node::rotate_pivot(&mut self.root, rotation)
+                Node::maybe_rotate(&mut self.root, rotation)
             }
         };
     }
@@ -273,5 +286,6 @@ mod tests {
 
         println!("{}", &tree.root.clone().unwrap().left.unwrap().left.unwrap().item);
         println!("{}", &tree.root.clone().unwrap().left.unwrap().right.unwrap().item);
+        assert!(tree.is_balanced());
     }
 }
