@@ -265,8 +265,8 @@ impl<'a, K: Ord, T> Iterator for AVLTreeIterator<'a, K, T> {
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             if let Some(to_return_immediately) = self.to_return_immediately {
-                return if let Some(right) = &to_return_immediately.right {
-                    self.to_iterate_in_depth.push(right);
+                return if let Some(next_on_right) = &to_return_immediately.right {
+                    self.to_iterate_in_depth.push(next_on_right);
                     self.to_return_immediately.take()
                 } else {
                     mem::replace(
@@ -277,8 +277,8 @@ impl<'a, K: Ord, T> Iterator for AVLTreeIterator<'a, K, T> {
                 .map(|v| &v.item);
             }
 
-            if let Some(left) = &self.to_iterate_in_depth.last()?.left {
-                self.to_iterate_in_depth.push(left);
+            if let Some(next_on_left) = &self.to_iterate_in_depth.last()?.left {
+                self.to_iterate_in_depth.push(next_on_left);
                 continue;
             }
 
