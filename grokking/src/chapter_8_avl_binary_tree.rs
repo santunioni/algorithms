@@ -96,18 +96,18 @@ impl<K: Ord, T> Node<K, T> {
         true
     }
 
-    fn node_find_deep(&self, lookup_key: &K) -> Option<&T> {
+    fn find_deep(&self, lookup_key: &K) -> Option<&T> {
         let extract_key = self.extract_key;
         let self_key = extract_key(&self.item);
         match self_key.cmp(lookup_key) {
             Ordering::Equal => Some(&self.item),
             Ordering::Less => match &self.right {
                 None => None,
-                Some(right) => right.node_find_deep(lookup_key),
+                Some(right) => right.find_deep(lookup_key),
             },
             Ordering::Greater => match &self.left {
                 None => None,
-                Some(left) => left.node_find_deep(lookup_key),
+                Some(left) => left.find_deep(lookup_key),
             },
         }
     }
@@ -217,7 +217,7 @@ impl<K: Ord, T> AVLTree<K, T> {
     fn find(&self, key: &K) -> Option<&T> {
         match &self.root {
             None => None,
-            Some(root) => root.node_find_deep(key),
+            Some(root) => root.find_deep(key),
         }
     }
 
@@ -289,7 +289,7 @@ mod tests {
     }
 
     #[test]
-    fn should_add_non_comparable_if_providing_comparator() {
+    fn should_sort_and_search_by_key() {
         struct Person {
             name: String,
         }
