@@ -1,4 +1,3 @@
-use crate::chapter_4_stack::Stack;
 use std::cmp::Ordering;
 use std::mem;
 
@@ -243,18 +242,18 @@ impl<K: Ord, T> AVLTree<K, T> {
 }
 
 struct AVLTreeIterator<'a, K: Ord, T> {
-    to_iterate_in_depth: Stack<&'a Node<K, T>>,
+    to_iterate_in_depth: Vec<&'a Node<K, T>>,
     to_return_immediately: Option<&'a Node<K, T>>,
 }
 
 impl<'a, K: Ord, T> AVLTreeIterator<'a, K, T> {
     fn new(tree: &'a AVLTree<K, T>) -> Self {
-        let mut stack = Stack::empty();
+        let mut to_iterate_in_depth = Vec::with_capacity(tree.height() as usize);
         if let Some(root) = &tree.root {
-            stack.prepend(root.as_ref());
+            to_iterate_in_depth.push(root.as_ref());
         }
         AVLTreeIterator {
-            to_iterate_in_depth: stack,
+            to_iterate_in_depth,
             to_return_immediately: None,
         }
     }
@@ -267,28 +266,28 @@ impl<'a, K: Ord, T> Iterator for AVLTreeIterator<'a, K, T> {
         loop {
             if let Some(to_return_immediately) = self.to_return_immediately {
                 return if let Some(right) = &to_return_immediately.right {
-                    self.to_iterate_in_depth.prepend(right);
+                    self.to_iterate_in_depth.push(right);
                     self.to_return_immediately.take()
                 } else {
                     mem::replace(
                         &mut self.to_return_immediately,
-                        self.to_iterate_in_depth.pop_head(),
+                        self.to_iterate_in_depth.pop(),
                     )
                 }
                 .map(|v| &v.item);
             }
 
-            let peeked_head = self.to_iterate_in_depth.peek_head()?;
-            if let Some(left) = &peeked_head.left {
-                self.to_iterate_in_depth.prepend(left);
+            if let Some(left) = &self.to_iterate_in_depth.last()?.left {
+                self.to_iterate_in_depth.push(left);
                 continue;
             }
-            let to_return_immediately = self.to_iterate_in_depth.pop_head()?;
+
+            let to_return_immediately = self.to_iterate_in_depth.pop()?;
 
             self.to_return_immediately = if let Some(right) = &to_return_immediately.right {
                 Some(right)
             } else {
-                self.to_iterate_in_depth.pop_head()
+                self.to_iterate_in_depth.pop()
             };
 
             return Some(&to_return_immediately.item);
