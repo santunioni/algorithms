@@ -49,7 +49,7 @@ impl<T> Stack<T> {
         })
     }
 
-    fn peek_head(&self) -> Option<&T> {
+    pub(crate) fn peek_head(&self) -> Option<&T> {
         self.head.as_ref().map(|node| &node.item)
     }
 

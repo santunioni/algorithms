@@ -1,3 +1,4 @@
+use crate::chapter_4_stack::Stack;
 use std::cmp::Ordering;
 
 type ExtractKey<K, T> = fn(&T) -> &K;
@@ -234,6 +235,59 @@ impl<K: Ord, T> AVLTree<K, T> {
             Some(root) => root.height,
         }
     }
+
+    fn iter(&self) -> AVLTreeIterator<K, T> {
+        AVLTreeIterator::new(self)
+    }
+}
+
+struct AVLTreeIterator<'a, K: Ord, T> {
+    stack: Stack<&'a Node<K, T>>,
+    next: Option<&'a Node<K, T>>,
+}
+
+impl<'a, K: Ord, T> AVLTreeIterator<'a, K, T> {
+    fn new(tree: &'a AVLTree<K, T>) -> Self {
+        let mut stack = Stack::empty();
+        if let Some(root) = &tree.root {
+            stack.prepend(root.as_ref());
+        }
+        AVLTreeIterator { stack, next: None }
+    }
+}
+
+impl<'a, K: Ord, T> Iterator for AVLTreeIterator<'a, K, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let Some(next) = self.next {
+                return if let Some(right) = &next.right {
+                    self.stack.prepend(right);
+                    self.next.take().map(|v| &v.item)
+                } else {
+                    let up = self.next.take();
+                    self.next = self.stack.pop_head();
+                    up.map(|v| &v.item)
+                };
+            }
+
+            let peeked_head = self.stack.peek_head()?;
+            if let Some(left) = &peeked_head.left {
+                self.stack.prepend(left);
+                continue;
+            }
+            let to_return = self.stack.pop_head()?;
+
+            self.next = if let Some(right) = &to_return.right {
+                Some(right)
+            } else {
+                self.stack.pop_head()
+            };
+
+            return Some(&to_return.item);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -312,5 +366,21 @@ mod tests {
         );
 
         assert!(tree.find(&"João".to_string()).is_none());
+    }
+
+    #[test]
+    fn should_iter_ordered() {
+        let mut tree = AVLTree::empty();
+        for item in 0..400 {
+            tree.add(item);
+        }
+
+        let it = tree.iter();
+        let collected_tree = it.collect::<Vec<_>>();
+
+        let expected_vec = (0..400).collect::<Vec<i32>>();
+        let expected = expected_vec.iter().collect::<Vec<&i32>>();
+
+        assert_eq!(collected_tree, expected);
     }
 }
