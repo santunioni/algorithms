@@ -1,5 +1,6 @@
 use crate::chapter_4_stack::Stack;
 use std::cmp::Ordering;
+use std::mem;
 
 type ExtractKey<K, T> = fn(&T) -> &K;
 
@@ -264,12 +265,11 @@ impl<'a, K: Ord, T> Iterator for AVLTreeIterator<'a, K, T> {
             if let Some(next) = self.next {
                 return if let Some(right) = &next.right {
                     self.stack.prepend(right);
-                    self.next.take().map(|v| &v.item)
+                    self.next.take()
                 } else {
-                    let up = self.next.take();
-                    self.next = self.stack.pop_head();
-                    up.map(|v| &v.item)
-                };
+                    mem::replace(&mut self.next, self.stack.pop_head())
+                }
+                .map(|v| &v.item);
             }
 
             let peeked_head = self.stack.peek_head()?;
