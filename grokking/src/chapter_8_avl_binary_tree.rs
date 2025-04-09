@@ -34,20 +34,12 @@ impl<K: Ord, T> Node<K, T> {
         })
     }
 
-    fn refresh_metadata(&mut self) {
-        match (&self.left, &self.right) {
-            (None, None) => {
-                self.height = 0;
-            }
-            (Some(left), None) => {
-                self.height = left.height + 1;
-            }
-            (None, Some(right)) => {
-                self.height = right.height + 1;
-            }
-            (Some(left), Some(right)) => {
-                self.height = left.height.max(right.height) + 1;
-            }
+    fn update_height(&mut self) {
+        self.height = match (&self.left, &self.right) {
+            (None, None) => 0,
+            (Some(left), None) => left.height + 1,
+            (None, Some(right)) => right.height + 1,
+            (Some(left), Some(right)) => left.height.max(right.height) + 1,
         }
     }
 
@@ -124,10 +116,10 @@ impl<K: Ord, T> Node<K, T> {
                 };
                 taken.left = left.right.take();
 
-                taken.refresh_metadata();
+                taken.update_height();
                 left.right = Some(taken);
 
-                left.refresh_metadata();
+                left.update_height();
                 pivot.replace(left);
             }
             RequiredRotation::Counter => {
@@ -139,17 +131,17 @@ impl<K: Ord, T> Node<K, T> {
                 };
                 taken.right = right.left.take();
 
-                taken.refresh_metadata();
+                taken.update_height();
                 right.left = Some(taken);
 
-                right.refresh_metadata();
+                right.update_height();
                 pivot.replace(right);
             }
             RequiredRotation::None => {}
         }
     }
 
-    fn add_neighbor(&mut self, neighbor: Box<Self>) -> RequiredRotation {
+    fn deep_add_node(&mut self, neighbor: Box<Self>) -> RequiredRotation {
         let extract_key = self.extract_key;
         let self_key = extract_key(&self.item);
         let lookup_key = extract_key(&neighbor.item);
@@ -157,21 +149,21 @@ impl<K: Ord, T> Node<K, T> {
         match self_key.cmp(lookup_key) {
             Ordering::Less => match &mut self.right {
                 Some(self_right) => {
-                    let rotation = self_right.add_neighbor(neighbor);
+                    let rotation = self_right.deep_add_node(neighbor);
                     Self::maybe_rotate(&mut self.right, rotation)
                 }
                 None => self.right = Some(neighbor),
             },
             Ordering::Greater | Ordering::Equal => match &mut self.left {
                 Some(self_left) => {
-                    let rotation = self_left.add_neighbor(neighbor);
+                    let rotation = self_left.deep_add_node(neighbor);
                     Self::maybe_rotate(&mut self.left, rotation)
                 }
                 None => self.left = Some(neighbor),
             },
         }
 
-        self.refresh_metadata();
+        self.update_height();
         self.get_required_rotation()
     }
 }
@@ -205,7 +197,7 @@ impl<K: Ord, T> AVLTree<K, T> {
             None => self.root = Some(Node::new(item, self.extract_key)),
             Some(root) => {
                 let neighbor = Node::new(item, self.extract_key);
-                let rotation = root.add_neighbor(neighbor);
+                let rotation = root.deep_add_node(neighbor);
                 Node::maybe_rotate(&mut self.root, rotation)
             }
         };
