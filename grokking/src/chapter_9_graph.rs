@@ -14,27 +14,6 @@ pub struct Vertex<T> {
     item: T,
 }
 
-pub struct Neighbor<'a, T> {
-    vertex: &'a Vertex<T>,
-    weight: Weight,
-}
-
-pub struct GetVertex<'a, T> {
-    vertex: &'a Vertex<T>,
-    graph: &'a Graph<T>,
-}
-
-impl<'a, T> GetVertex<'a, T> {
-    fn get_neighbors(&self) -> Vec<Neighbor<'a, T>> {
-        let legs = &self.graph.edges[&self.vertex.id];
-        let neighbors = legs.iter().map(|leg| Neighbor {
-            weight: leg.weight,
-            vertex: &self.graph.vertices[&leg.to_vertex_id],
-        });
-        neighbors.collect()
-    }
-}
-
 pub struct Graph<T> {
     edges: HashMap<VertexId, Vec<Leg>>,
     vertices: HashMap<VertexId, Vertex<T>>,
@@ -85,12 +64,50 @@ impl<T> Graph<T> {
         self.attach_weighted(from, to, 1 as Weight);
     }
 
-    fn depth_search_iterator(&self, start: &VertexId) -> GraphIterator<T> {
+    fn depth_search_iterator(&self, start: &VertexId) -> impl Iterator<Item = GetVertex<'_, T>> {
         GraphIterator::new(start, Mode::Depth, self)
     }
 
-    fn breath_search_iterator(&self, start: &VertexId) -> GraphIterator<T> {
+    fn breath_search_iterator(&self, start: &VertexId) -> impl Iterator<Item = GetVertex<'_, T>> {
         GraphIterator::new(start, Mode::Breath, self)
+    }
+}
+
+pub struct GetVertex<'a, T> {
+    vertex: &'a Vertex<T>,
+    graph: &'a Graph<T>,
+}
+
+pub struct GetNeighbor<'a, T> {
+    vertex: GetVertex<'a, T>,
+    weight: Weight,
+}
+
+impl<'a, T> GetVertex<'a, T> {
+    fn get_neighbors(&self) -> Vec<GetNeighbor<'a, T>> {
+        let legs = &self.graph.edges[&self.vertex.id];
+        let mut neighbors = Vec::new();
+        for leg in legs {
+            let Some(vertex) = self.graph.get_vertex(&leg.to_vertex_id) else {
+                continue;
+            };
+            neighbors.push(GetNeighbor {
+                weight: leg.weight,
+                vertex,
+            })
+        }
+        neighbors.sort_by(|a, b| a.weight.total_cmp(&b.weight));
+        neighbors
+    }
+
+    fn get_item(&self) -> &T {
+        &self.vertex.item
+    }
+}
+
+impl<T> GetNeighbor<'_, T> {
+    fn get_item(&self) -> &T {
+        self.vertex.get_item()
     }
 }
 
@@ -130,19 +147,20 @@ impl<'a, T> GraphIterator<'a, T> {
 }
 
 impl<'a, T> Iterator for GraphIterator<'a, T> {
-    type Item = &'a Vertex<T>;
+    type Item = GetVertex<'a, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let next_vertex_id = self.queue.pop_front()?;
-        let next_vertex = self.graph.vertices.get(&next_vertex_id)?;
+        let next_vertex = self.graph.get_vertex(&next_vertex_id)?;
 
-        if let Some(legs) = self.graph.edges.get(&next_vertex.id) {
-            for leg in legs {
-                self.put_to_queue(&leg.to_vertex_id);
-            }
-        };
+        for get_neighbor in next_vertex.get_neighbors() {
+            self.put_to_queue(&get_neighbor.vertex.vertex.id);
+        }
 
-        Some(next_vertex)
+        Some(GetVertex {
+            vertex: next_vertex.vertex,
+            graph: self.graph,
+        })
     }
 }
 
@@ -174,7 +192,7 @@ mod tests {
                 .unwrap()
                 .get_neighbors()
                 .iter()
-                .map(|neighbor| &neighbor.vertex.item)
+                .map(|neighbor| neighbor.vertex.get_item())
                 .collect::<Vec<_>>(),
             vec!["Bianca"]
         );
@@ -191,8 +209,8 @@ mod tests {
 
         let mut iter = graph.breath_search_iterator(&vini);
 
-        assert_eq!(iter.next().unwrap().item, "Vinícius");
-        assert_eq!(iter.next().unwrap().item, "Bianca");
+        assert_eq!(iter.next().unwrap().get_item(), "Vinícius");
+        assert_eq!(iter.next().unwrap().get_item(), "Bianca");
         assert!(iter.next().is_none());
     }
 }
