@@ -3,17 +3,32 @@ use std::cell::{Ref, RefCell};
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-struct Node<T> {
+pub struct GraphNode<T> {
     id: u64,
     item: T,
-    pointers: Vec<Link<T>>,
+    legs: Vec<Leg<T>>,
 }
 
-type Link<T> = Rc<RefCell<Node<T>>>;
+type Link<T> = Rc<RefCell<GraphNode<T>>>;
 
-impl<T> Node<T> {
+struct Leg<T> {
+    node: Link<T>,
+    weight: u64,
+}
+
+impl<T> Leg<T> {
+    fn new_weighted(node: Link<T>, weight: u64) -> Self {
+        Leg { node, weight }
+    }
+}
+
+impl<T> GraphNode<T> {
     fn attach(&mut self, other: &Link<T>) {
-        self.pointers.push(Rc::clone(other))
+        self.attach_weighted(other, 1)
+    }
+
+    fn attach_weighted(&mut self, other: &Link<T>, weight: u64) {
+        self.legs.push(Leg::new_weighted(Rc::clone(other), weight))
     }
 
     fn breath_search_iterator(node: &Link<T>) -> GraphNodeIterator<T> {
@@ -43,10 +58,10 @@ impl NodeFactory {
     }
 
     fn create_node<T>(&mut self, item: T) -> Link<T> {
-        let node = Rc::new(RefCell::new(Node {
+        let node = Rc::new(RefCell::new(GraphNode {
             id: self.id,
             item,
-            pointers: vec![],
+            legs: vec![],
         }));
         self.id += 1;
         node
@@ -96,12 +111,12 @@ impl<T> Iterator for GraphNodeIterator<T> {
         let next = self.queue.pop_front()?;
 
         if self.drain {
-            for ptr in next.borrow_mut().pointers.drain(0..) {
-                self.put_to_queue(&ptr);
+            for ptr in next.borrow_mut().legs.drain(0..) {
+                self.put_to_queue(&ptr.node);
             }
         } else {
-            for ptr in next.borrow().pointers.iter() {
-                self.put_to_queue(ptr);
+            for ptr in next.borrow().legs.iter() {
+                self.put_to_queue(&ptr.node);
             }
         };
 
@@ -110,13 +125,13 @@ impl<T> Iterator for GraphNodeIterator<T> {
 }
 
 fn destroy_all<T>(from_node: &Link<T>) {
-    Node::breath_search_drain(from_node).count();
+    GraphNode::breath_search_drain(from_node).count();
 }
 
-impl<T> Drop for Node<T> {
+impl<T> Drop for GraphNode<T> {
     fn drop(&mut self) {
-        self.pointers.iter().for_each(destroy_all);
-        self.pointers.clear();
+        self.legs.iter().map(|v| &v.node).for_each(destroy_all);
+        self.legs.clear();
     }
 }
 
@@ -150,7 +165,9 @@ impl<T> GraphItemIterator<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::chapter_6_graph::{GraphItemIterator, Node, NodeFactory, destroy_all, extract_item};
+    use crate::chapter_6_graph::{
+        GraphItemIterator, GraphNode, NodeFactory, destroy_all, extract_item,
+    };
     use std::rc::Rc;
 
     #[test]
@@ -173,9 +190,9 @@ mod tests {
 
         assert_eq!(
             vini.borrow()
-                .pointers
+                .legs
                 .iter()
-                .map(|v| v.borrow().item.clone())
+                .map(|v| v.node.borrow().item.clone())
                 .collect::<Vec<_>>(),
             vec!["Bianca"]
         );
@@ -210,13 +227,13 @@ mod tests {
         vini.borrow_mut().attach(&bibi);
         bibi.borrow_mut().attach(&vini);
 
-        let mut iter = Node::breath_search_iterator(&vini);
+        let mut iter = GraphNode::breath_search_iterator(&vini);
 
         assert_eq!(iter.next().unwrap().borrow().item, "Vinícius");
         assert_eq!(iter.next().unwrap().borrow().item, "Bianca");
         assert!(iter.next().is_none());
 
-        let mut iter = Node::breath_search_iterator(&vini);
+        let mut iter = GraphNode::breath_search_iterator(&vini);
 
         assert_eq!(iter.next().unwrap().borrow().item, "Vinícius");
         assert!(
@@ -229,12 +246,12 @@ mod tests {
         );
         assert!(iter.next().is_none());
 
-        for node in Node::breath_search_iterator(&vini) {
+        for node in GraphNode::breath_search_iterator(&vini) {
             let item = &node.borrow().item;
             println!("{}", item)
         }
 
-        let mut iter_util = GraphItemIterator::new(Node::breath_search_iterator(&vini));
+        let mut iter_util = GraphItemIterator::new(GraphNode::breath_search_iterator(&vini));
         assert!(iter_util.fetch().unwrap().contains("Vinícius"));
         assert!(&iter_util.fetch().unwrap().contains("Bianca"));
         assert!(iter.next().is_none());
