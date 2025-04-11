@@ -9,6 +9,7 @@ pub struct Leg {
     weight: Weight,
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Vertex<T> {
     id: VertexId,
     item: T,
@@ -21,7 +22,7 @@ pub struct Graph<T> {
 }
 
 impl<T> Graph<T> {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Graph {
             edges: HashMap::new(),
             vertices: HashMap::new(),
@@ -29,7 +30,7 @@ impl<T> Graph<T> {
         }
     }
 
-    fn add_vertex(&mut self, item: T) -> VertexId {
+    pub fn add_vertex(&mut self, item: T) -> VertexId {
         let id = self.counter;
         self.counter += 1;
         let vertex = Vertex { item, id };
@@ -37,7 +38,7 @@ impl<T> Graph<T> {
         id
     }
 
-    fn get_vertex(&self, vertex_id: &VertexId) -> Option<GetVertex<T>> {
+    pub fn get_vertex(&self, vertex_id: &VertexId) -> Option<GetVertex<T>> {
         let vertex = self.vertices.get(vertex_id);
         vertex.map(|vertex| GetVertex {
             vertex,
@@ -45,7 +46,7 @@ impl<T> Graph<T> {
         })
     }
 
-    fn attach_weighted(&mut self, from: &VertexId, to: &VertexId, weight: Weight) {
+    pub fn attach_weighted(&mut self, from: &VertexId, to: &VertexId, weight: Weight) {
         let leg = Leg {
             weight,
             to_vertex_id: *to,
@@ -60,54 +61,69 @@ impl<T> Graph<T> {
         }
     }
 
-    fn attach(&mut self, from: &VertexId, to: &VertexId) {
+    pub fn attach(&mut self, from: &VertexId, to: &VertexId) {
         self.attach_weighted(from, to, 1 as Weight);
     }
 
-    fn depth_search_iterator(&self, start: &VertexId) -> impl Iterator<Item = GetVertex<'_, T>> {
+    pub fn depth_search_iterator(
+        &self,
+        start: &VertexId,
+    ) -> impl Iterator<Item = GetVertex<'_, T>> {
         GraphIterator::new(start, Mode::Depth, self)
     }
 
-    fn breath_search_iterator(&self, start: &VertexId) -> impl Iterator<Item = GetVertex<'_, T>> {
+    pub fn breath_search_iterator(
+        &self,
+        start: &VertexId,
+    ) -> impl Iterator<Item = GetVertex<'_, T>> {
         GraphIterator::new(start, Mode::Breath, self)
     }
 }
 
 pub struct GetVertex<'a, T> {
-    vertex: &'a Vertex<T>,
+    pub vertex: &'a Vertex<T>,
     graph: &'a Graph<T>,
 }
 
 pub struct GetNeighbor<'a, T> {
-    vertex: GetVertex<'a, T>,
-    weight: Weight,
+    get_vertex: GetVertex<'a, T>,
+    pub weight: Weight,
 }
 
 impl<'a, T> GetVertex<'a, T> {
-    fn get_neighbors(&self) -> Vec<GetNeighbor<'a, T>> {
-        let legs = &self.graph.edges[&self.vertex.id];
+    pub fn get_neighbors(&self) -> Vec<GetNeighbor<'a, T>> {
         let mut neighbors = Vec::new();
+        let Some(legs) = self.graph.edges.get(&self.vertex.id) else {
+            return neighbors;
+        };
         for leg in legs {
             let Some(vertex) = self.graph.get_vertex(&leg.to_vertex_id) else {
                 continue;
             };
             neighbors.push(GetNeighbor {
                 weight: leg.weight,
-                vertex,
+                get_vertex: vertex,
             })
         }
         neighbors.sort_by(|a, b| a.weight.total_cmp(&b.weight));
         neighbors
     }
 
-    fn get_item(&self) -> &T {
+    pub fn get_item(&self) -> &T {
         &self.vertex.item
+    }
+
+    pub fn get_id(&self) -> &VertexId {
+        &self.vertex.id
     }
 }
 
 impl<T> GetNeighbor<'_, T> {
-    fn get_item(&self) -> &T {
-        self.vertex.get_item()
+    pub fn get_item(&self) -> &T {
+        self.get_vertex.get_item()
+    }
+    pub fn get_id(&self) -> &VertexId {
+        &self.get_vertex.vertex.id
     }
 }
 
@@ -154,7 +170,7 @@ impl<'a, T> Iterator for GraphIterator<'a, T> {
         let next_vertex = self.graph.get_vertex(&next_vertex_id)?;
 
         for get_neighbor in next_vertex.get_neighbors() {
-            self.put_to_queue(&get_neighbor.vertex.vertex.id);
+            self.put_to_queue(&get_neighbor.get_vertex.vertex.id);
         }
 
         Some(GetVertex {
@@ -192,7 +208,7 @@ mod tests {
                 .unwrap()
                 .get_neighbors()
                 .iter()
-                .map(|neighbor| neighbor.vertex.get_item())
+                .map(|neighbor| neighbor.get_vertex.get_item())
                 .collect::<Vec<_>>(),
             vec!["Bianca"]
         );
