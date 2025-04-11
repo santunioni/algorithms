@@ -2,7 +2,7 @@ use crate::chapter_5_hashset::HashSet;
 use std::collections::{HashMap, VecDeque};
 
 pub type VertexId = usize;
-pub type Weight = f32;
+pub type Weight = isize;
 
 pub struct Leg {
     to_vertex_id: VertexId,
@@ -115,7 +115,7 @@ impl<'a, T> GetVertex<'a, T> {
                 get_vertex: vertex,
             })
         }
-        neighbors.sort_by(|a, b| a.weight.total_cmp(&b.weight));
+        neighbors.sort_by(|a, b| a.weight.cmp(&b.weight));
         neighbors
     }
 
