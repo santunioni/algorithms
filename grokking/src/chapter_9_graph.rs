@@ -1,7 +1,7 @@
 use crate::chapter_5_hashset::HashSet;
 use std::collections::{HashMap, VecDeque};
 
-pub type VertexId = u64;
+pub type VertexId = usize;
 pub type Weight = f32;
 
 pub struct Leg {
@@ -13,6 +13,16 @@ pub struct Leg {
 pub struct Vertex<T> {
     id: VertexId,
     item: T,
+}
+
+impl<T> Vertex<T> {
+    pub fn get_id(&self) -> VertexId {
+        self.id
+    }
+
+    pub fn get_item(&self) -> &T {
+        &self.item
+    }
 }
 
 pub struct Graph<T> {
@@ -122,8 +132,8 @@ impl<T> GetNeighbor<'_, T> {
     pub fn get_item(&self) -> &T {
         self.get_vertex.get_item()
     }
-    pub fn get_id(&self) -> &VertexId {
-        &self.get_vertex.vertex.id
+    pub fn get_id(&self) -> VertexId {
+        self.get_vertex.vertex.get_id()
     }
 }
 
