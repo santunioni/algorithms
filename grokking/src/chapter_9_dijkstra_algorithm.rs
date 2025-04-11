@@ -119,4 +119,41 @@ mod tests {
             ]
         )
     }
+
+    #[test]
+    fn should_find_cheapest_trade_to_piano() {
+        let mut graph = Graph::new();
+
+        let book = graph.add_vertex("Book".to_string());
+        let poster = graph.add_vertex("Poster".to_string());
+        let drums = graph.add_vertex("Drum Set".to_string());
+        let lp = graph.add_vertex("Rare LP".to_string());
+        let bass = graph.add_vertex("Bass Guitar".to_string());
+        let piano = graph.add_vertex("Piano".to_string());
+
+        graph.attach_weighted(&book, &poster, 0.0);
+        graph.attach_weighted(&poster, &drums, 35.0);
+        graph.attach_weighted(&drums, &piano, 10.0);
+
+        graph.attach_weighted(&book, &lp, 5.0);
+        graph.attach_weighted(&lp, &bass, 15.0);
+        graph.attach_weighted(&bass, &piano, 20.0);
+
+        graph.attach_weighted(&poster, &bass, 30.0);
+        graph.attach_weighted(&lp, &drums, 20.0);
+
+        let (distance, path) =
+            find_shortest_route(&graph, book, piano).expect("Should find a path");
+
+        assert_eq!(distance, 35.0);
+        assert_eq!(
+            path,
+            vec![
+                graph.get_vertex(&book).unwrap().vertex,
+                graph.get_vertex(&lp).unwrap().vertex,
+                graph.get_vertex(&drums).unwrap().vertex,
+                graph.get_vertex(&piano).unwrap().vertex,
+            ]
+        )
+    }
 }
