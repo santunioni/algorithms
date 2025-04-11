@@ -9,86 +9,96 @@ struct Travel {
     from_node: VertexId,
 }
 
-fn find_shortest_route<T>(
-    graph: &Graph<T>,
-    departure: VertexId,
-    destination: VertexId,
-) -> Option<(Distance, Vec<&Vertex<T>>)> {
-    let destination = graph.get_vertex(&destination)?.vertex;
-    let default_travel = || Travel {
-        from_node: departure,
-        distance: Distance::MAX,
-    };
-    let mut travels = HashMap::new();
-    travels.insert(
-        departure,
-        Travel {
+trait DijkstraAlgorithm<T> {
+    fn find_shortest_route(
+        &self,
+        departure: VertexId,
+        destination: VertexId,
+    ) -> Option<(Distance, Vec<&Vertex<T>>)>;
+}
+
+impl<T> DijkstraAlgorithm<T> for Graph<T> {
+    fn find_shortest_route(
+        &self,
+        departure: VertexId,
+        destination: VertexId,
+    ) -> Option<(Distance, Vec<&Vertex<T>>)> {
+        let destination = self.get_vertex(&destination)?.vertex;
+        let default_travel = || Travel {
             from_node: departure,
-            distance: 0 as Distance,
-        },
-    );
-
-    // Stop criteria for avoid searching very large graphs for alternative routes
-    let mut how_many_times_reached_destination = 0;
-    // Stop criteria for avoid searching very large graphs for alternative routes
-    let mut how_many_iterations_after_reaching_destination = 0;
-
-    for get_vertex in graph.breath_search_iterator(&departure) {
-        let vertex_travel = *travels
-            .entry(*get_vertex.get_id())
-            .or_insert_with(default_travel);
-
-        for get_neighbor in get_vertex.get_neighbors() {
-            let known_travel = *travels
-                .entry(get_neighbor.get_id())
-                .or_insert_with(default_travel);
-
-            let discovered_travel = Travel {
-                from_node: *get_vertex.get_id(),
-                distance: vertex_travel.distance + get_neighbor.weight,
-            };
-
-            if discovered_travel.distance < known_travel.distance {
-                travels.insert(get_neighbor.get_id(), discovered_travel);
-            }
-
-            if get_neighbor.get_id() == destination.get_id() {
-                how_many_times_reached_destination += 1;
-            }
-        }
-
-        if how_many_times_reached_destination > 0 {
-            how_many_iterations_after_reaching_destination += 1;
-        }
+            distance: Distance::MAX,
+        };
+        let mut travels = HashMap::new();
+        travels.insert(
+            departure,
+            Travel {
+                from_node: departure,
+                distance: 0 as Distance,
+            },
+        );
 
         // Stop criteria for avoid searching very large graphs for alternative routes
-        if how_many_times_reached_destination > 10
-            || how_many_iterations_after_reaching_destination > 100
-        {
-            break;
+        let mut how_many_times_reached_destination = 0;
+        // Stop criteria for avoid searching very large graphs for alternative routes
+        let mut how_many_iterations_after_reaching_destination = 0;
+
+        for get_vertex in self.breath_search_iterator(&departure) {
+            let vertex_travel = *travels
+                .entry(*get_vertex.get_id())
+                .or_insert_with(default_travel);
+
+            for get_neighbor in get_vertex.get_neighbors() {
+                let known_travel = *travels
+                    .entry(get_neighbor.get_id())
+                    .or_insert_with(default_travel);
+
+                let discovered_travel = Travel {
+                    from_node: *get_vertex.get_id(),
+                    distance: vertex_travel.distance + get_neighbor.weight,
+                };
+
+                if discovered_travel.distance < known_travel.distance {
+                    travels.insert(get_neighbor.get_id(), discovered_travel);
+                }
+
+                if get_neighbor.get_id() == destination.get_id() {
+                    how_many_times_reached_destination += 1;
+                }
+            }
+
+            if how_many_times_reached_destination > 0 {
+                how_many_iterations_after_reaching_destination += 1;
+            }
+
+            // Stop criteria for avoid searching very large graphs for alternative routes
+            if how_many_times_reached_destination > 10
+                || how_many_iterations_after_reaching_destination > 100
+            {
+                break;
+            }
         }
-    }
 
-    let mut path = vec![destination];
-    let mut stop_point = destination.get_id();
-    let distance = travels.get(&destination.get_id())?.distance;
+        let mut path = vec![destination];
+        let mut stop_point = destination.get_id();
+        let distance = travels.get(&destination.get_id())?.distance;
 
-    loop {
-        let travel = travels.get(&stop_point)?;
-        stop_point = travel.from_node;
-        path.push(graph.get_vertex(&stop_point)?.vertex);
-        if stop_point == departure {
-            break;
+        loop {
+            let travel = travels.get(&stop_point)?;
+            stop_point = travel.from_node;
+            path.push(self.get_vertex(&stop_point)?.vertex);
+            if stop_point == departure {
+                break;
+            }
         }
-    }
-    path.reverse();
+        path.reverse();
 
-    Some((distance, path))
+        Some((distance, path))
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::chapter_9_dijkstra_algorithm::find_shortest_route;
+    use crate::chapter_9_dijkstra_algorithm::DijkstraAlgorithm;
     use crate::chapter_9_graph::Graph;
 
     #[test]
@@ -105,8 +115,9 @@ mod tests {
         graph.attach_weighted(&b, &a, 3.0);
         graph.attach_weighted(&b, &finish, 5.0);
 
-        let (distance, path) =
-            find_shortest_route(&graph, start, finish).expect("Should find a path");
+        let (distance, path) = graph
+            .find_shortest_route(start, finish)
+            .expect("Should find a path");
 
         assert_eq!(distance, 6.0);
         assert_eq!(
@@ -142,8 +153,9 @@ mod tests {
         graph.attach_weighted(&poster, &bass, 30.0);
         graph.attach_weighted(&lp, &drums, 20.0);
 
-        let (distance, path) =
-            find_shortest_route(&graph, book, piano).expect("Should find a path");
+        let (distance, path) = graph
+            .find_shortest_route(book, piano)
+            .expect("Should find a path");
 
         assert_eq!(distance, 35.0);
         assert_eq!(
