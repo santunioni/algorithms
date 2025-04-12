@@ -300,16 +300,13 @@ mod tests {
         graph.attach_weighted(&poster, &bass, 30);
         graph.attach_weighted(&lp, &drums, 20);
 
-        let Path {
-            distance,
-            waypoints,
-        } = graph
+        let path = graph
             .find_shortest_path(book, piano)
             .expect("Should find a route");
 
-        assert_eq!(distance, 35);
+        assert_eq!(path.distance, 35);
         assert_eq!(
-            waypoints,
+            path.waypoints,
             vec![
                 graph.get_vertex(&book).unwrap().vertex,
                 graph.get_vertex(&lp).unwrap().vertex,
@@ -344,11 +341,11 @@ mod tests {
 
         graph.attach_weighted(&d, &finish, 1);
 
-        let Path { distance, .. } = graph
+        let path = graph
             .find_shortest_path(start, finish)
             .expect("Should find a route");
 
-        assert_eq!(distance, 8);
+        assert_eq!(path.distance, 8);
     }
 
     #[test]
@@ -367,11 +364,11 @@ mod tests {
         graph.attach_weighted(&b, &a, 1);
         graph.attach_weighted(&c, &finish, 30);
 
-        let Path { distance, .. } = graph
+        let path = graph
             .find_shortest_path(start, finish)
             .expect("Should find a route");
 
-        assert_eq!(distance, 60);
+        assert_eq!(path.distance, 60);
     }
 
     #[test]
@@ -392,10 +389,10 @@ mod tests {
         graph.attach_weighted(&c, &finish, 2);
         graph.attach_weighted(&c, &b, -1);
 
-        let Path { distance, .. } = graph
+        let path = graph
             .find_shortest_path(start, finish)
             .expect("Should find a route");
 
-        assert_eq!(distance, 4);
+        assert_eq!(path.distance, 4);
     }
 }

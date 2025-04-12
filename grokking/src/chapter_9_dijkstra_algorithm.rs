@@ -48,6 +48,10 @@ impl<'a, T> DijkstraAlgorithm<'a, T> {
         loop {
             let (parent_id, parent_distance_from_departure) = self.get_next()?;
 
+            if parent_id == self.destination {
+                return None;
+            }
+
             for get_neighbor in self.graph.get_vertex(&parent_id)?.get_neighbors() {
                 self.save_waypoint(
                     get_neighbor.get_id(),
