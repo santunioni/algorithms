@@ -18,8 +18,8 @@ pub struct Leg {
 
 #[derive(Debug, PartialEq)]
 pub struct Vertex<T> {
-    id: VertexId,
-    item: T,
+    pub id: VertexId,
+    pub item: T,
 }
 
 impl<T> Vertex<T> {
@@ -33,13 +33,13 @@ impl<T> Vertex<T> {
 }
 
 pub struct Graph<T> {
-    edges: HashMap<VertexId, Vec<Leg>>,
-    vertices: HashMap<VertexId, Vertex<T>>,
-    counter: VertexId,
+    pub edges: HashMap<VertexId, Vec<Leg>>,
+    pub vertices: HashMap<VertexId, Vertex<T>>,
+    pub counter: VertexId,
 }
 
 impl<T> Graph<T> {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Graph {
             edges: HashMap::new(),
             vertices: HashMap::new(),
@@ -47,7 +47,7 @@ impl<T> Graph<T> {
         }
     }
 
-    fn add_vertex(&mut self, item: T) -> VertexId {
+    pub fn add_vertex(&mut self, item: T) -> VertexId {
         let id = self.counter;
         self.counter += 1;
         let vertex = Vertex { item, id };
@@ -78,7 +78,7 @@ impl<T> Graph<T> {
         }
     }
 
-    fn attach(&mut self, from: &VertexId, to: &VertexId) {
+    pub fn attach(&mut self, from: &VertexId, to: &VertexId) {
         self.attach_weighted(from, to, 1 as Weight);
     }
 
@@ -86,7 +86,7 @@ impl<T> Graph<T> {
         GraphIterator::new(start, Mode::Depth, self)
     }
 
-    fn breath_search_iterator(&self, start: &VertexId) -> impl Iterator<Item = GetVertex<T>> {
+    pub fn breath_search_iterator(&self, start: &VertexId) -> impl Iterator<Item = GetVertex<T>> {
         GraphIterator::new(start, Mode::Breath, self)
     }
 
@@ -101,7 +101,7 @@ pub struct GetVertex<'a, T> {
 }
 
 pub struct GetNeighbor<'a, T> {
-    get_vertex: GetVertex<'a, T>,
+    pub get_vertex: GetVertex<'a, T>,
     pub weight: Weight,
 }
 
