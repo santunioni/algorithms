@@ -90,7 +90,7 @@ impl<T> Graph<T> {
         GraphIterator::new(start, Mode::Breath, self)
     }
 
-    fn find_shortest_route(&self, departure: VertexId, destination: VertexId) -> Option<Path<T>> {
+    fn find_shortest_path(&self, departure: VertexId, destination: VertexId) -> Option<Path<T>> {
         DijkstraAlgorithm::new(self, departure, destination).into_shortest_path()
     }
 }
@@ -263,8 +263,8 @@ mod tests {
             distance,
             waypoints,
         } = graph
-            .find_shortest_route(start, finish)
-            .expect("Should find a path");
+            .find_shortest_path(start, finish)
+            .expect("Should find a route");
 
         assert_eq!(distance, 6);
         assert_eq!(
@@ -304,8 +304,8 @@ mod tests {
             distance,
             waypoints,
         } = graph
-            .find_shortest_route(book, piano)
-            .expect("Should find a path");
+            .find_shortest_path(book, piano)
+            .expect("Should find a route");
 
         assert_eq!(distance, 35);
         assert_eq!(
@@ -345,8 +345,8 @@ mod tests {
         graph.attach_weighted(&d, &finish, 1);
 
         let Path { distance, .. } = graph
-            .find_shortest_route(start, finish)
-            .expect("Should find a path");
+            .find_shortest_path(start, finish)
+            .expect("Should find a route");
 
         assert_eq!(distance, 8);
     }
@@ -368,8 +368,8 @@ mod tests {
         graph.attach_weighted(&c, &finish, 30);
 
         let Path { distance, .. } = graph
-            .find_shortest_route(start, finish)
-            .expect("Should find a path");
+            .find_shortest_path(start, finish)
+            .expect("Should find a route");
 
         assert_eq!(distance, 60);
     }
@@ -393,8 +393,8 @@ mod tests {
         graph.attach_weighted(&c, &b, -1);
 
         let Path { distance, .. } = graph
-            .find_shortest_route(start, finish)
-            .expect("Should find a path");
+            .find_shortest_path(start, finish)
+            .expect("Should find a route");
 
         assert_eq!(distance, 4);
     }
