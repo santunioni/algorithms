@@ -39,7 +39,7 @@ pub struct Graph<T> {
 }
 
 impl<T> Graph<T> {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Graph {
             edges: HashMap::new(),
             vertices: HashMap::new(),
@@ -47,7 +47,7 @@ impl<T> Graph<T> {
         }
     }
 
-    pub fn add_vertex(&mut self, item: T) -> VertexId {
+    fn add_vertex(&mut self, item: T) -> VertexId {
         let id = self.counter;
         self.counter += 1;
         let vertex = Vertex { item, id };
@@ -63,7 +63,7 @@ impl<T> Graph<T> {
         })
     }
 
-    pub fn attach_weighted(&mut self, from: &VertexId, to: &VertexId, weight: Weight) {
+    fn attach_weighted(&mut self, from: &VertexId, to: &VertexId, weight: Weight) {
         let leg = Leg {
             weight,
             to_vertex_id: *to,
@@ -78,26 +78,20 @@ impl<T> Graph<T> {
         }
     }
 
-    pub fn attach(&mut self, from: &VertexId, to: &VertexId) {
+    fn attach(&mut self, from: &VertexId, to: &VertexId) {
         self.attach_weighted(from, to, 1 as Weight);
     }
 
-    pub fn depth_search_iterator(
-        &self,
-        start: &VertexId,
-    ) -> impl Iterator<Item = GetVertex<'_, T>> {
+    fn depth_search_iterator(&self, start: &VertexId) -> impl Iterator<Item = GetVertex<T>> {
         GraphIterator::new(start, Mode::Depth, self)
     }
 
-    pub fn breath_search_iterator(
-        &self,
-        start: &VertexId,
-    ) -> impl Iterator<Item = GetVertex<'_, T>> {
+    fn breath_search_iterator(&self, start: &VertexId) -> impl Iterator<Item = GetVertex<T>> {
         GraphIterator::new(start, Mode::Breath, self)
     }
 
     fn find_shortest_route(&self, departure: VertexId, destination: VertexId) -> Option<Path<T>> {
-        DijkstraAlgorithm::new(departure, destination).find_shortest_path(self)
+        DijkstraAlgorithm::new(self, departure, destination).into_shortest_path()
     }
 }
 

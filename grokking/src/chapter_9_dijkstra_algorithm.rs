@@ -8,22 +8,24 @@ struct Waypoint {
     parent_vertex_id: VertexId,
 }
 
-pub(crate) struct DijkstraAlgorithm {
+pub(crate) struct DijkstraAlgorithm<'a, T> {
     priority_queue: PriorityQueue<VertexId, Weight>,
     visited_vertices: HashSet<VertexId>,
     shorter_waypoints: HashMap<VertexId, Waypoint>,
     departure: VertexId,
     destination: VertexId,
+    graph: &'a Graph<T>,
 }
 
-impl DijkstraAlgorithm {
-    pub(crate) fn new(departure: VertexId, destination: VertexId) -> Self {
+impl<'a, T> DijkstraAlgorithm<'a, T> {
+    pub(crate) fn new(graph: &'a Graph<T>, departure: VertexId, destination: VertexId) -> Self {
         let mut dt = DijkstraAlgorithm {
             priority_queue: PriorityQueue::new(),
             visited_vertices: HashSet::new(),
             shorter_waypoints: HashMap::new(),
             departure,
             destination,
+            graph,
         };
 
         dt.save_waypoint(
@@ -35,6 +37,28 @@ impl DijkstraAlgorithm {
         );
 
         dt
+    }
+
+    pub(crate) fn into_shortest_path(mut self) -> Option<Path<'a, T>> {
+        self.populate_shorter_legs();
+        self.get_path()
+    }
+
+    fn populate_shorter_legs(&mut self) -> Option<()> {
+        loop {
+            let (parent_id, parent_distance_from_departure) = self.get_next()?;
+
+            for get_neighbor in self.graph.get_vertex(&parent_id)?.get_neighbors() {
+                self.save_waypoint(
+                    get_neighbor.get_id(),
+                    Waypoint {
+                        parent_vertex_id: parent_id,
+                        distance_from_departure: parent_distance_from_departure
+                            + get_neighbor.weight,
+                    },
+                );
+            }
+        }
     }
 
     fn get_next(&mut self) -> Option<(VertexId, Weight)> {
@@ -62,25 +86,8 @@ impl DijkstraAlgorithm {
         };
     }
 
-    fn populate_shorter_legs<T>(&mut self, graph: &Graph<T>) -> Option<()> {
-        loop {
-            let (parent_id, parent_distance_from_departure) = self.get_next()?;
-
-            for get_neighbor in graph.get_vertex(&parent_id)?.get_neighbors() {
-                self.save_waypoint(
-                    get_neighbor.get_id(),
-                    Waypoint {
-                        parent_vertex_id: parent_id,
-                        distance_from_departure: parent_distance_from_departure
-                            + get_neighbor.weight,
-                    },
-                );
-            }
-        }
-    }
-
-    fn get_path<'a, T>(&self, graph: &'a Graph<T>) -> Option<Path<'a, T>> {
-        let mut waypoints = vec![graph.get_vertex(&self.destination)?.vertex];
+    fn get_path(&self) -> Option<Path<'a, T>> {
+        let mut waypoints = vec![self.graph.get_vertex(&self.destination)?.vertex];
         let mut waypoint = self.destination;
         let distance = self
             .shorter_waypoints
@@ -90,7 +97,7 @@ impl DijkstraAlgorithm {
         loop {
             let travel = self.shorter_waypoints.get(&waypoint)?;
             waypoint = travel.parent_vertex_id;
-            waypoints.push(graph.get_vertex(&waypoint)?.vertex);
+            waypoints.push(self.graph.get_vertex(&waypoint)?.vertex);
             if waypoint == self.departure {
                 break;
             }
@@ -101,10 +108,5 @@ impl DijkstraAlgorithm {
             distance,
             waypoints,
         })
-    }
-
-    pub(crate) fn find_shortest_path<T>(mut self, graph: &Graph<T>) -> Option<Path<T>> {
-        self.populate_shorter_legs(graph);
-        self.get_path(graph)
     }
 }
