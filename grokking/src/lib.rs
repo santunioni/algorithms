@@ -15,4 +15,3 @@ mod chapter_5_hashset;
 mod chapter_6_graph;
 mod chapter_8_avl_binary_tree;
 mod chapter_9_dijkstra_algorithm;
-mod chapter_9_graph;

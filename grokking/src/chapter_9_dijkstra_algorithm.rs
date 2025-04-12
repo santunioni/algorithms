@@ -1,4 +1,4 @@
-use crate::chapter_9_graph::{Distance, Graph, Path, VertexId, Weight};
+use crate::chapter_6_graph::{Distance, Graph, Path, VertexId, Weight};
 use priority_queue::PriorityQueue;
 use std::collections::{HashMap, HashSet};
 
