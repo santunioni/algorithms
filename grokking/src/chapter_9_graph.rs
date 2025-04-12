@@ -1,8 +1,15 @@
 use crate::chapter_5_hashset::HashSet;
+use crate::chapter_9_dijkstra_algorithm::DijkstraAlgorithm;
 use std::collections::{HashMap, VecDeque};
 
 pub type VertexId = usize;
 pub type Weight = isize;
+pub type Distance = Weight;
+
+pub struct Path<'a, T> {
+    pub distance: Distance,
+    pub waypoints: Vec<&'a Vertex<T>>,
+}
 
 pub struct Leg {
     to_vertex_id: VertexId,
@@ -87,6 +94,10 @@ impl<T> Graph<T> {
         start: &VertexId,
     ) -> impl Iterator<Item = GetVertex<'_, T>> {
         GraphIterator::new(start, Mode::Breath, self)
+    }
+
+    fn find_shortest_route(&self, departure: VertexId, destination: VertexId) -> Option<Path<T>> {
+        DijkstraAlgorithm::new(departure, destination).find_shortest_path(self)
     }
 }
 
@@ -192,7 +203,7 @@ impl<'a, T> Iterator for GraphIterator<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::chapter_9_graph::Graph;
+    use crate::chapter_9_graph::{Graph, Path};
 
     #[test]
     fn should_build_node() {
@@ -238,5 +249,159 @@ mod tests {
         assert_eq!(iter.next().unwrap().get_item(), "Vinícius");
         assert_eq!(iter.next().unwrap().get_item(), "Bianca");
         assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn should_find_shortest_path() {
+        let mut graph = Graph::new();
+        let start = graph.add_vertex("Start".to_string());
+        let a = graph.add_vertex("A".to_string());
+        let b = graph.add_vertex("B".to_string());
+        let finish = graph.add_vertex("Finish".to_string());
+
+        graph.attach_weighted(&start, &a, 6);
+        graph.attach_weighted(&start, &b, 2);
+        graph.attach_weighted(&a, &finish, 1);
+        graph.attach_weighted(&b, &a, 3);
+        graph.attach_weighted(&b, &finish, 5);
+
+        let Path {
+            distance,
+            waypoints,
+        } = graph
+            .find_shortest_route(start, finish)
+            .expect("Should find a path");
+
+        assert_eq!(distance, 6);
+        assert_eq!(
+            waypoints,
+            vec![
+                graph.get_vertex(&start).unwrap().vertex,
+                graph.get_vertex(&b).unwrap().vertex,
+                graph.get_vertex(&a).unwrap().vertex,
+                graph.get_vertex(&finish).unwrap().vertex,
+            ]
+        )
+    }
+
+    #[test]
+    fn should_find_cheapest_trade_to_piano() {
+        let mut graph = Graph::new();
+
+        let book = graph.add_vertex("Book".to_string());
+        let poster = graph.add_vertex("Poster".to_string());
+        let drums = graph.add_vertex("Drum Set".to_string());
+        let lp = graph.add_vertex("Rare LP".to_string());
+        let bass = graph.add_vertex("Bass Guitar".to_string());
+        let piano = graph.add_vertex("Piano".to_string());
+
+        graph.attach_weighted(&book, &poster, 0);
+        graph.attach_weighted(&poster, &drums, 35);
+        graph.attach_weighted(&drums, &piano, 10);
+
+        graph.attach_weighted(&book, &lp, 5);
+        graph.attach_weighted(&lp, &bass, 15);
+        graph.attach_weighted(&bass, &piano, 20);
+
+        graph.attach_weighted(&poster, &bass, 30);
+        graph.attach_weighted(&lp, &drums, 20);
+
+        let Path {
+            distance,
+            waypoints,
+        } = graph
+            .find_shortest_route(book, piano)
+            .expect("Should find a path");
+
+        assert_eq!(distance, 35);
+        assert_eq!(
+            waypoints,
+            vec![
+                graph.get_vertex(&book).unwrap().vertex,
+                graph.get_vertex(&lp).unwrap().vertex,
+                graph.get_vertex(&drums).unwrap().vertex,
+                graph.get_vertex(&piano).unwrap().vertex,
+            ]
+        )
+    }
+
+    #[test]
+    fn should_find_path_for_grokking_exercise_9_1_a() {
+        let mut graph = Graph::new();
+
+        let start = graph.add_vertex("Start".to_string());
+        let a = graph.add_vertex("A".to_string());
+        let b = graph.add_vertex("B".to_string());
+        let c = graph.add_vertex("C".to_string());
+        let d = graph.add_vertex("D".to_string());
+        let finish = graph.add_vertex("Finish".to_string());
+
+        graph.attach_weighted(&start, &a, 5);
+        graph.attach_weighted(&start, &b, 2);
+
+        graph.attach_weighted(&a, &c, 4);
+        graph.attach_weighted(&a, &d, 2);
+
+        graph.attach_weighted(&b, &a, 8);
+        graph.attach_weighted(&b, &d, 7);
+
+        graph.attach_weighted(&c, &d, 6);
+        graph.attach_weighted(&c, &finish, 3);
+
+        graph.attach_weighted(&d, &finish, 1);
+
+        let Path { distance, .. } = graph
+            .find_shortest_route(start, finish)
+            .expect("Should find a path");
+
+        assert_eq!(distance, 8);
+    }
+
+    #[test]
+    fn should_find_path_for_grokking_exercise_9_1_b() {
+        let mut graph = Graph::new();
+
+        let start = graph.add_vertex("Start".to_string());
+        let a = graph.add_vertex("A".to_string());
+        let b = graph.add_vertex("B".to_string());
+        let c = graph.add_vertex("C".to_string());
+        let finish = graph.add_vertex("Finish".to_string());
+
+        graph.attach_weighted(&start, &a, 10);
+        graph.attach_weighted(&a, &c, 20);
+        graph.attach_weighted(&c, &b, 1);
+        graph.attach_weighted(&b, &a, 1);
+        graph.attach_weighted(&c, &finish, 30);
+
+        let Path { distance, .. } = graph
+            .find_shortest_route(start, finish)
+            .expect("Should find a path");
+
+        assert_eq!(distance, 60);
+    }
+
+    #[test]
+    fn should_find_path_for_grokking_exercise_9_1_c() {
+        let mut graph = Graph::new();
+
+        let start = graph.add_vertex("Start".to_string());
+        let a = graph.add_vertex("A".to_string());
+        let b = graph.add_vertex("B".to_string());
+        let c = graph.add_vertex("C".to_string());
+        let finish = graph.add_vertex("Finish".to_string());
+
+        graph.attach_weighted(&start, &a, 2);
+        graph.attach_weighted(&start, &b, 2);
+        graph.attach_weighted(&b, &a, 2);
+        graph.attach_weighted(&a, &c, 2);
+        graph.attach_weighted(&a, &finish, 2);
+        graph.attach_weighted(&c, &finish, 2);
+        graph.attach_weighted(&c, &b, -1);
+
+        let Path { distance, .. } = graph
+            .find_shortest_route(start, finish)
+            .expect("Should find a path");
+
+        assert_eq!(distance, 4);
     }
 }
