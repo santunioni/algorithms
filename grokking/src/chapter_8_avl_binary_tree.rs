@@ -12,15 +12,9 @@ struct Node<K: Ord, T> {
     extract_key: ExtractKey<K, T>,
 }
 
-enum Side {
-    Left,
-    Right,
-}
-
-enum RequiredRotation {
+enum Rotation {
     Clock,
     Counter,
-    None,
 }
 
 impl<K: Ord, T> Node<K, T> {
@@ -35,79 +29,45 @@ impl<K: Ord, T> Node<K, T> {
     }
 
     fn update_height(&mut self) {
-        self.height = match (&self.left, &self.right) {
-            (None, None) => 0,
-            (Some(left), None) => left.height + 1,
-            (None, Some(right)) => right.height + 1,
-            (Some(left), Some(right)) => left.height.max(right.height) + 1,
-        }
+        let left_height = self.left.as_ref().map_or(0, |node| node.height);
+        let right_height = self.right.as_ref().map_or(0, |node| node.height);
+        self.height = 1 + left_height.max(right_height);
     }
 
-    fn get_required_rotation(&self) -> RequiredRotation {
-        match (&self.left, &self.right) {
-            (None, None) => RequiredRotation::None,
-            (Some(left), None) => {
-                if left.height > 1 {
-                    RequiredRotation::Clock
-                } else {
-                    RequiredRotation::None
-                }
-            }
-            (None, Some(right)) => {
-                if right.height > 1 {
-                    RequiredRotation::Counter
-                } else {
-                    RequiredRotation::None
-                }
-            }
-            (Some(left), Some(right)) => match right.height as i32 - left.height as i32 {
-                (2..) => RequiredRotation::Counter,
-                (..=-2) => RequiredRotation::Clock,
-                _ => RequiredRotation::None,
-            },
+    fn balance_factor(&self) -> i16 {
+        let left_height = self.left.as_ref().map_or(0, |node| node.height);
+        let right_height = self.right.as_ref().map_or(0, |node| node.height);
+        right_height as i16 - left_height as i16
+    }
+
+    fn get_required_rotation(&self) -> Option<Rotation> {
+        match self.balance_factor() {
+            2.. => Some(Rotation::Counter),
+            ..=-2 => Some(Rotation::Clock),
+            _ => None,
         }
     }
 
     fn is_balanced(&self) -> bool {
-        matches!(self.get_required_rotation(), RequiredRotation::None)
+        self.get_required_rotation().is_none()
+            && self.left.as_ref().is_none_or(|left| left.is_balanced())
+            && self.right.as_ref().is_none_or(|right| right.is_balanced())
     }
 
-    fn is_deep_balanced(&self) -> bool {
-        if !self.is_balanced() {
-            return false;
-        }
-        if let Some(left) = &self.left {
-            if !Self::is_deep_balanced(left) {
-                return false;
-            }
-        };
-        if let Some(right) = &self.right {
-            if !right.is_deep_balanced() {
-                return false;
-            }
-        };
-        true
-    }
-
-    fn find_deep(&self, lookup_key: &K) -> Option<&T> {
+    fn find(&self, lookup_key: &K) -> Option<&T> {
         let extract_key = self.extract_key;
         let self_key = extract_key(&self.item);
+
         match self_key.cmp(lookup_key) {
             Ordering::Equal => Some(&self.item),
-            Ordering::Less => match &self.right {
-                None => None,
-                Some(right) => right.find_deep(lookup_key),
-            },
-            Ordering::Greater => match &self.left {
-                None => None,
-                Some(left) => left.find_deep(lookup_key),
-            },
+            Ordering::Less => self.right.as_ref().and_then(|node| node.find(lookup_key)),
+            Ordering::Greater => self.left.as_ref().and_then(|node| node.find(lookup_key)),
         }
     }
 
     fn maybe_rotate(&mut self) {
         match self.get_required_rotation() {
-            RequiredRotation::Clock => {
+            Some(Rotation::Clock) => {
                 // Selecting left
                 let Some(mut selected) = self.left.take() else {
                     return;
@@ -122,7 +82,7 @@ impl<K: Ord, T> Node<K, T> {
                 self.right = Some(selected);
                 self.update_height();
             }
-            RequiredRotation::Counter => {
+            Some(Rotation::Counter) => {
                 // Selecting right
                 let Some(mut selected) = self.right.take() else {
                     return;
@@ -137,7 +97,7 @@ impl<K: Ord, T> Node<K, T> {
                 self.left = Some(selected);
                 self.update_height();
             }
-            RequiredRotation::None => {}
+            None => {}
         }
     }
 
@@ -147,18 +107,20 @@ impl<K: Ord, T> Node<K, T> {
         let lookup_key = extract_key(&neighbor.item);
 
         match self_key.cmp(lookup_key) {
-            Ordering::Less => match &mut self.right {
-                Some(self_right) => {
-                    self_right.deep_add_node(neighbor);
+            Ordering::Less => {
+                if let Some(right) = &mut self.right {
+                    right.deep_add_node(neighbor);
+                } else {
+                    self.right = Some(neighbor);
                 }
-                None => self.right = Some(neighbor),
-            },
-            Ordering::Greater | Ordering::Equal => match &mut self.left {
-                Some(self_left) => {
-                    self_left.deep_add_node(neighbor);
+            }
+            Ordering::Greater | Ordering::Equal => {
+                if let Some(left) = &mut self.left {
+                    left.deep_add_node(neighbor);
+                } else {
+                    self.left = Some(neighbor);
                 }
-                None => self.left = Some(neighbor),
-            },
+            }
         }
 
         self.update_height();
@@ -187,17 +149,14 @@ impl<K: Ord, T> AVLTree<K, T> {
             extract_key,
         }
     }
-}
 
-impl<K: Ord, T> AVLTree<K, T> {
     fn add(&mut self, item: T) {
-        match &mut self.root {
-            None => self.root = Some(Node::new(item, self.extract_key)),
-            Some(root) => {
-                let neighbor = Node::new(item, self.extract_key);
-                root.deep_add_node(neighbor);
-            }
-        };
+        if let Some(root) = &mut self.root {
+            let neighbor = Node::new(item, self.extract_key);
+            root.deep_add_node(neighbor);
+        } else {
+            self.root = Some(Node::new(item, self.extract_key));
+        }
     }
 
     fn contains(&self, key: &K) -> bool {
@@ -205,24 +164,18 @@ impl<K: Ord, T> AVLTree<K, T> {
     }
 
     fn find(&self, key: &K) -> Option<&T> {
-        match &self.root {
-            None => None,
-            Some(root) => root.find_deep(key),
-        }
+        self.root.as_ref().and_then(|root| root.find(key))
     }
 
     fn is_balanced(&self) -> bool {
         match &self.root {
             None => true,
-            Some(root) => root.is_deep_balanced(),
+            Some(root) => root.is_balanced(),
         }
     }
 
     fn height(&self) -> u16 {
-        match &self.root {
-            None => 0,
-            Some(root) => root.height,
-        }
+        self.root.as_ref().map_or(0, |root| root.height)
     }
 
     fn iter(&self) -> AVLTreeIterator<K, T> {
@@ -231,20 +184,21 @@ impl<K: Ord, T> AVLTree<K, T> {
 }
 
 struct AVLTreeIterator<'a, K: Ord, T> {
-    to_iterate_in_depth: Vec<&'a Node<K, T>>,
-    to_return_immediately: Option<&'a Node<K, T>>,
+    stack: Vec<&'a Node<K, T>>,
+    current: Option<&'a Node<K, T>>,
 }
 
 impl<'a, K: Ord, T> AVLTreeIterator<'a, K, T> {
     fn new(tree: &'a AVLTree<K, T>) -> Self {
-        let mut to_iterate_in_depth = Vec::with_capacity(tree.height() as usize);
+        let stack = Vec::with_capacity(tree.height() as usize);
+        let mut current = None;
+
+        // Initialize with root
         if let Some(root) = &tree.root {
-            to_iterate_in_depth.push(root.as_ref());
+            current = Some(root.as_ref());
         }
-        AVLTreeIterator {
-            to_iterate_in_depth,
-            to_return_immediately: None,
-        }
+
+        AVLTreeIterator { stack, current }
     }
 }
 
@@ -252,35 +206,16 @@ impl<'a, K: Ord, T> Iterator for AVLTreeIterator<'a, K, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Some(to_return_immediately) = self.to_return_immediately {
-                return if let Some(next_on_right) = &to_return_immediately.right {
-                    self.to_iterate_in_depth.push(next_on_right);
-                    self.to_return_immediately.take()
-                } else {
-                    mem::replace(
-                        &mut self.to_return_immediately,
-                        self.to_iterate_in_depth.pop(),
-                    )
-                }
-                .map(|v| &v.item);
-            }
-
-            if let Some(next_on_left) = &self.to_iterate_in_depth.last()?.left {
-                self.to_iterate_in_depth.push(next_on_left);
-                continue;
-            }
-
-            let to_return_immediately = self.to_iterate_in_depth.pop()?;
-
-            self.to_return_immediately = if let Some(right) = &to_return_immediately.right {
-                Some(right)
-            } else {
-                self.to_iterate_in_depth.pop()
-            };
-
-            return Some(&to_return_immediately.item);
+        // In-order traversal: left, current, right
+        while let Some(node) = self.current {
+            self.stack.push(node);
+            self.current = node.left.as_deref();
         }
+
+        let node = self.stack.pop()?;
+        self.current = node.right.as_deref();
+
+        Some(&node.item)
     }
 }
 
