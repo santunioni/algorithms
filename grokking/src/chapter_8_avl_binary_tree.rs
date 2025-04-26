@@ -189,20 +189,28 @@ impl<K: Ord, T> AVLTree<K, T> {
 
 struct AVLTreeIterator<'a, K: Ord, T> {
     stack: Vec<&'a Node<K, T>>,
-    current: Option<&'a Node<K, T>>,
 }
 
 impl<'a, K: Ord, T> AVLTreeIterator<'a, K, T> {
     fn new(tree: &'a AVLTree<K, T>) -> Self {
-        let stack = Vec::with_capacity(tree.height() as usize);
-        let mut current = None;
+        let mut iterator = AVLTreeIterator {
+            stack: Vec::with_capacity(tree.height() as usize),
+        };
 
-        // Initialize with root
         if let Some(root) = &tree.root {
-            current = Some(root.as_ref());
+            iterator.push_left_leg(root.as_ref());
         }
 
-        AVLTreeIterator { stack, current }
+        iterator
+    }
+
+    // Helper method to push all nodes along the left branch onto the stack
+    fn push_left_leg(&mut self, mut node: &'a Node<K, T>) {
+        self.stack.push(node);
+        while let Some(left) = node.left.as_deref() {
+            self.stack.push(left);
+            node = left;
+        }
     }
 }
 
@@ -210,14 +218,11 @@ impl<'a, K: Ord, T> Iterator for AVLTreeIterator<'a, K, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // In-order traversal: left, current, right
-        while let Some(node) = self.current {
-            self.stack.push(node);
-            self.current = node.left.as_deref();
-        }
-
         let node = self.stack.pop()?;
-        self.current = node.right.as_deref();
+
+        if let Some(right) = node.right.as_deref() {
+            self.push_left_leg(right);
+        }
 
         Some(&node.item)
     }
