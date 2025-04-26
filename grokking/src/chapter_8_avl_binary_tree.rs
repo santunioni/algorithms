@@ -191,6 +191,9 @@ impl<'a, K: Ord, T> Iterator for AVLTreeIterator<'a, K, T> {
 #[cfg(test)]
 mod tests {
     use crate::chapter_8_avl_binary_tree::AVLTree;
+    use rand::prelude::SliceRandom;
+    use rand::rngs::StdRng;
+    use rand::SeedableRng;
 
     #[test]
     fn should_add_and_check_element() {
@@ -278,5 +281,23 @@ mod tests {
         let expected = expected_vec.iter().collect::<Vec<&i32>>();
 
         assert_eq!(collected_tree, expected);
+    }
+
+    #[test]
+    fn should_balance_tree_inserting_random_positions() {
+        let size = 100;
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut numbers: Vec<i32> = (0..size as i32).collect();
+        numbers.shuffle(&mut rng);
+
+        let mut tree = AVLTree::empty();
+        for &num in &numbers {
+            tree.add(num);
+        }
+
+        for i in 0..size as i32 {
+            assert!(tree.contains(&i));
+        }
+        assert_eq!(tree.height(), 8);
     }
 }
