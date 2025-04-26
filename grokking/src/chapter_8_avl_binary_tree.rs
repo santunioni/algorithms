@@ -105,8 +105,8 @@ impl<K: Ord, T> Node<K, T> {
         }
     }
 
-    fn maybe_rotate(&mut self, orientation: RequiredRotation) {
-        match orientation {
+    fn maybe_rotate(&mut self) {
+        match self.get_required_rotation() {
             RequiredRotation::Clock => {
                 // Selecting left
                 let Some(mut selected) = self.left.take() else {
@@ -141,7 +141,7 @@ impl<K: Ord, T> Node<K, T> {
         }
     }
 
-    fn deep_add_node(&mut self, neighbor: Box<Self>) -> RequiredRotation {
+    fn deep_add_node(&mut self, neighbor: Box<Self>) {
         let extract_key = self.extract_key;
         let self_key = extract_key(&self.item);
         let lookup_key = extract_key(&neighbor.item);
@@ -149,22 +149,20 @@ impl<K: Ord, T> Node<K, T> {
         match self_key.cmp(lookup_key) {
             Ordering::Less => match &mut self.right {
                 Some(self_right) => {
-                    let orientation = self_right.deep_add_node(neighbor);
-                    self_right.maybe_rotate(orientation);
+                    self_right.deep_add_node(neighbor);
                 }
                 None => self.right = Some(neighbor),
             },
             Ordering::Greater | Ordering::Equal => match &mut self.left {
                 Some(self_left) => {
-                    let orientation = self_left.deep_add_node(neighbor);
-                    self_left.maybe_rotate(orientation);
+                    self_left.deep_add_node(neighbor);
                 }
                 None => self.left = Some(neighbor),
             },
         }
 
         self.update_height();
-        self.get_required_rotation()
+        self.maybe_rotate();
     }
 }
 
@@ -197,8 +195,7 @@ impl<K: Ord, T> AVLTree<K, T> {
             None => self.root = Some(Node::new(item, self.extract_key)),
             Some(root) => {
                 let neighbor = Node::new(item, self.extract_key);
-                let orientation = root.deep_add_node(neighbor);
-                root.maybe_rotate(orientation);
+                root.deep_add_node(neighbor);
             }
         };
     }
