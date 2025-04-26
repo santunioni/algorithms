@@ -105,37 +105,37 @@ impl<K: Ord, T> Node<K, T> {
         }
     }
 
-    fn maybe_rotate(pivot: &mut Option<Box<Self>>, orientation: RequiredRotation) {
+    fn maybe_rotate(&mut self, orientation: RequiredRotation) {
         match orientation {
             RequiredRotation::Clock => {
-                let Some(mut taken) = pivot.take() else {
+                // Selecting left
+                let Some(mut selected) = self.left.take() else {
                     return;
                 };
-                let Some(mut left) = taken.left.take() else {
-                    return;
-                };
-                taken.left = left.right.take();
+                // Move selected to self and select old self
+                mem::swap(self, &mut selected);
 
-                taken.update_height();
-                left.right = Some(taken);
+                // Move right of old left (old left = self) to right of old self
+                selected.left = self.right.take();
+                selected.update_height();
 
-                left.update_height();
-                pivot.replace(left);
+                self.right = Some(selected);
+                self.update_height();
             }
             RequiredRotation::Counter => {
-                let Some(mut taken) = pivot.take() else {
+                // Selecting right
+                let Some(mut selected) = self.right.take() else {
                     return;
                 };
-                let Some(mut right) = taken.right.take() else {
-                    return;
-                };
-                taken.right = right.left.take();
+                // Move selected to self and select old self
+                mem::swap(self, &mut selected);
 
-                taken.update_height();
-                right.left = Some(taken);
+                // Move right of old left (old left = self) to right of old self
+                selected.right = self.left.take();
+                selected.update_height();
 
-                right.update_height();
-                pivot.replace(right);
+                self.left = Some(selected);
+                self.update_height();
             }
             RequiredRotation::None => {}
         }
@@ -149,15 +149,15 @@ impl<K: Ord, T> Node<K, T> {
         match self_key.cmp(lookup_key) {
             Ordering::Less => match &mut self.right {
                 Some(self_right) => {
-                    let rotation = self_right.deep_add_node(neighbor);
-                    Self::maybe_rotate(&mut self.right, rotation)
+                    let orientation = self_right.deep_add_node(neighbor);
+                    self_right.maybe_rotate(orientation);
                 }
                 None => self.right = Some(neighbor),
             },
             Ordering::Greater | Ordering::Equal => match &mut self.left {
                 Some(self_left) => {
-                    let rotation = self_left.deep_add_node(neighbor);
-                    Self::maybe_rotate(&mut self.left, rotation)
+                    let orientation = self_left.deep_add_node(neighbor);
+                    self_left.maybe_rotate(orientation);
                 }
                 None => self.left = Some(neighbor),
             },
@@ -197,8 +197,8 @@ impl<K: Ord, T> AVLTree<K, T> {
             None => self.root = Some(Node::new(item, self.extract_key)),
             Some(root) => {
                 let neighbor = Node::new(item, self.extract_key);
-                let rotation = root.deep_add_node(neighbor);
-                Node::maybe_rotate(&mut self.root, rotation)
+                let orientation = root.deep_add_node(neighbor);
+                root.maybe_rotate(orientation);
             }
         };
     }
