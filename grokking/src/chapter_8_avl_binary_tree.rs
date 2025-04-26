@@ -85,21 +85,14 @@ impl<K: Ord, T> Node<K, T> {
         let self_key = extract_key(&self.item);
         let lookup_key = extract_key(&neighbor.item);
 
-        match self_key.cmp(lookup_key) {
-            Ordering::Less => {
-                if let Some(right) = &mut self.right {
-                    right.add(neighbor);
-                } else {
-                    self.right = Some(neighbor);
-                }
-            }
-            Ordering::Greater | Ordering::Equal => {
-                if let Some(left) = &mut self.left {
-                    left.add(neighbor);
-                } else {
-                    self.left = Some(neighbor);
-                }
-            }
+        let child = match self_key.cmp(lookup_key) {
+            Ordering::Less => &mut self.right,
+            Ordering::Equal | Ordering::Greater => &mut self.left,
+        };
+
+        match child {
+            Some(child) => child.add(neighbor),
+            None => *child = Some(neighbor),
         }
 
         self.balance();
