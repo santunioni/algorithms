@@ -65,7 +65,7 @@ impl<K: Ord, T> Node<K, T> {
         }
     }
 
-    fn maybe_rotate(&mut self) {
+    fn balance(&mut self) {
         match self.get_required_rotation() {
             Some(Rotation::Clock) => {
                 // Selecting left
@@ -124,7 +124,7 @@ impl<K: Ord, T> Node<K, T> {
         }
 
         self.update_height();
-        self.maybe_rotate();
+        self.balance();
     }
 }
 
