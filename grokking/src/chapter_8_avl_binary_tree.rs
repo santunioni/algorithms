@@ -12,11 +12,6 @@ struct Node<K: Ord, T> {
     extract_key: ExtractKey<K, T>,
 }
 
-enum Rotation {
-    Right, // Renamed from Clock
-    Left,  // Renamed from Counter
-}
-
 impl<K: Ord, T> Node<K, T> {
     fn new(item: T, extract_key: ExtractKey<K, T>) -> Box<Self> {
         Box::new(Node {
@@ -34,20 +29,6 @@ impl<K: Ord, T> Node<K, T> {
         self.height = 1 + left_height.max(right_height);
     }
 
-    fn balance_factor(&self) -> i16 {
-        let left_height = self.left.as_ref().map_or(0, |node| node.height);
-        let right_height = self.right.as_ref().map_or(0, |node| node.height);
-        right_height as i16 - left_height as i16
-    }
-
-    fn get_required_rotation(&self) -> Option<Rotation> {
-        match self.balance_factor() {
-            2.. => Some(Rotation::Left),
-            ..=-2 => Some(Rotation::Right),
-            _ => None,
-        }
-    }
-
     fn find(&self, lookup_key: &K) -> Option<&T> {
         let extract_key = self.extract_key;
         let self_key = extract_key(&self.item);
@@ -60,45 +41,43 @@ impl<K: Ord, T> Node<K, T> {
     }
 
     fn rotate_right(&mut self) {
-        // Pick left
         let Some(mut picked) = self.left.take() else {
             return;
         };
-        // Pick pivot and move left to self
+
         mem::swap(self, &mut picked);
 
-        // Pivot's left should be old left's right
         picked.left = self.right.take();
         picked.update_height();
 
-        // Pivot should be attached at old left's right
         self.right = Some(picked);
-        self.update_height();
     }
 
     fn rotate_left(&mut self) {
-        // Pick right
         let Some(mut picked) = self.right.take() else {
             return;
         };
-        // Pick pivot and move right to self
+
         mem::swap(self, &mut picked);
 
-        // Pivot's right should be old right's left
         picked.right = self.left.take();
         picked.update_height();
 
-        // Pivot should be attached at old left's left
         self.left = Some(picked);
-        self.update_height();
     }
 
     fn balance(&mut self) {
-        match self.get_required_rotation() {
-            Some(Rotation::Right) => self.rotate_right(),
-            Some(Rotation::Left) => self.rotate_left(),
-            None => {}
+        let left_height = self.left.as_ref().map_or(0, |node| node.height);
+        let right_height = self.right.as_ref().map_or(0, |node| node.height);
+        let balance_factor = right_height as i16 - left_height as i16;
+
+        if balance_factor <= -2 {
+            self.rotate_right();
+        } else if balance_factor >= 2 {
+            self.rotate_left();
         }
+
+        self.update_height();
     }
 
     fn add(&mut self, neighbor: Box<Self>) {
@@ -123,7 +102,6 @@ impl<K: Ord, T> Node<K, T> {
             }
         }
 
-        self.update_height();
         self.balance();
     }
 }
