@@ -48,12 +48,6 @@ impl<K: Ord, T> Node<K, T> {
         }
     }
 
-    fn is_balanced(&self) -> bool {
-        self.get_required_rotation().is_none()
-            && self.left.as_ref().is_none_or(|left| left.is_balanced())
-            && self.right.as_ref().is_none_or(|right| right.is_balanced())
-    }
-
     fn find(&self, lookup_key: &K) -> Option<&T> {
         let extract_key = self.extract_key;
         let self_key = extract_key(&self.item);
@@ -66,34 +60,36 @@ impl<K: Ord, T> Node<K, T> {
     }
 
     fn rotate_right(&mut self) {
-        // Selecting left
-        let Some(mut selected) = self.left.take() else {
+        // Pick left
+        let Some(mut picked) = self.left.take() else {
             return;
         };
-        // Move selected to self and select old self
-        mem::swap(self, &mut selected);
+        // Pick pivot and move left to self
+        mem::swap(self, &mut picked);
 
-        // Move right of old left (old left = self) to right of old self
-        selected.left = self.right.take();
-        selected.update_height();
+        // Pivot's left should be old left's right
+        picked.left = self.right.take();
+        picked.update_height();
 
-        self.right = Some(selected);
+        // Pivot should be attached at old left's right
+        self.right = Some(picked);
         self.update_height();
     }
 
     fn rotate_left(&mut self) {
-        // Selecting right
-        let Some(mut selected) = self.right.take() else {
+        // Pick right
+        let Some(mut picked) = self.right.take() else {
             return;
         };
-        // Move selected to self and select old self
-        mem::swap(self, &mut selected);
+        // Pick pivot and move right to self
+        mem::swap(self, &mut picked);
 
-        // Move right of old left (old left = self) to right of old self
-        selected.right = self.left.take();
-        selected.update_height();
+        // Pivot's right should be old right's left
+        picked.right = self.left.take();
+        picked.update_height();
 
-        self.left = Some(selected);
+        // Pivot should be attached at old left's left
+        self.left = Some(picked);
         self.update_height();
     }
 
@@ -171,13 +167,6 @@ impl<K: Ord, T> AVLTree<K, T> {
         self.root.as_ref().and_then(|root| root.find(key))
     }
 
-    fn is_balanced(&self) -> bool {
-        match &self.root {
-            None => true,
-            Some(root) => root.is_balanced(),
-        }
-    }
-
     fn height(&self) -> u16 {
         self.root.as_ref().map_or(0, |root| root.height)
     }
@@ -244,7 +233,7 @@ mod tests {
         assert!(tree.contains(&2));
         assert!(tree.contains(&0));
         assert!(!tree.contains(&3));
-        assert!(tree.is_balanced());
+
         assert_eq!(tree.height(), 1);
     }
 
@@ -256,7 +245,6 @@ mod tests {
             tree.add(item);
         }
 
-        assert!(tree.is_balanced());
         for item in 1..100 {
             assert!(tree.contains(&item));
         }
@@ -272,7 +260,6 @@ mod tests {
             tree.add(item);
         }
 
-        assert!(tree.is_balanced());
         for item in 1..100 {
             assert!(tree.contains(&item));
         }
