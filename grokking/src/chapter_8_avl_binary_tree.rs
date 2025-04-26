@@ -13,8 +13,8 @@ struct Node<K: Ord, T> {
 }
 
 enum Rotation {
-    Clock,
-    Counter,
+    Right, // Renamed from Clock
+    Left,  // Renamed from Counter
 }
 
 impl<K: Ord, T> Node<K, T> {
@@ -42,8 +42,8 @@ impl<K: Ord, T> Node<K, T> {
 
     fn get_required_rotation(&self) -> Option<Rotation> {
         match self.balance_factor() {
-            2.. => Some(Rotation::Counter),
-            ..=-2 => Some(Rotation::Clock),
+            2.. => Some(Rotation::Left),
+            ..=-2 => Some(Rotation::Right),
             _ => None,
         }
     }
@@ -65,43 +65,47 @@ impl<K: Ord, T> Node<K, T> {
         }
     }
 
+    fn rotate_right(&mut self) {
+        // Selecting left
+        let Some(mut selected) = self.left.take() else {
+            return;
+        };
+        // Move selected to self and select old self
+        mem::swap(self, &mut selected);
+
+        // Move right of old left (old left = self) to right of old self
+        selected.left = self.right.take();
+        selected.update_height();
+
+        self.right = Some(selected);
+        self.update_height();
+    }
+
+    fn rotate_left(&mut self) {
+        // Selecting right
+        let Some(mut selected) = self.right.take() else {
+            return;
+        };
+        // Move selected to self and select old self
+        mem::swap(self, &mut selected);
+
+        // Move right of old left (old left = self) to right of old self
+        selected.right = self.left.take();
+        selected.update_height();
+
+        self.left = Some(selected);
+        self.update_height();
+    }
+
     fn balance(&mut self) {
         match self.get_required_rotation() {
-            Some(Rotation::Clock) => {
-                // Selecting left
-                let Some(mut selected) = self.left.take() else {
-                    return;
-                };
-                // Move selected to self and select old self
-                mem::swap(self, &mut selected);
-
-                // Move right of old left (old left = self) to right of old self
-                selected.left = self.right.take();
-                selected.update_height();
-
-                self.right = Some(selected);
-                self.update_height();
-            }
-            Some(Rotation::Counter) => {
-                // Selecting right
-                let Some(mut selected) = self.right.take() else {
-                    return;
-                };
-                // Move selected to self and select old self
-                mem::swap(self, &mut selected);
-
-                // Move right of old left (old left = self) to right of old self
-                selected.right = self.left.take();
-                selected.update_height();
-
-                self.left = Some(selected);
-                self.update_height();
-            }
+            Some(Rotation::Right) => self.rotate_right(),
+            Some(Rotation::Left) => self.rotate_left(),
             None => {}
         }
     }
 
-    fn deep_add_node(&mut self, neighbor: Box<Self>) {
+    fn add(&mut self, neighbor: Box<Self>) {
         let extract_key = self.extract_key;
         let self_key = extract_key(&self.item);
         let lookup_key = extract_key(&neighbor.item);
@@ -109,14 +113,14 @@ impl<K: Ord, T> Node<K, T> {
         match self_key.cmp(lookup_key) {
             Ordering::Less => {
                 if let Some(right) = &mut self.right {
-                    right.deep_add_node(neighbor);
+                    right.add(neighbor);
                 } else {
                     self.right = Some(neighbor);
                 }
             }
             Ordering::Greater | Ordering::Equal => {
                 if let Some(left) = &mut self.left {
-                    left.deep_add_node(neighbor);
+                    left.add(neighbor);
                 } else {
                     self.left = Some(neighbor);
                 }
@@ -153,7 +157,7 @@ impl<K: Ord, T> AVLTree<K, T> {
     fn add(&mut self, item: T) {
         if let Some(root) = &mut self.root {
             let neighbor = Node::new(item, self.extract_key);
-            root.deep_add_node(neighbor);
+            root.add(neighbor);
         } else {
             self.root = Some(Node::new(item, self.extract_key));
         }
