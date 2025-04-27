@@ -29,12 +29,12 @@ impl<K: Ord, T> Node<K, T> {
         self.height = 1 + left_height.max(right_height);
     }
 
-    fn find(&self, lookup_key: &K) -> Option<&T> {
+    fn find(&self, lookup_key: &K) -> Option<&Node<K, T>> {
         let extract_key = self.extract_key;
         let self_key = extract_key(&self.item);
 
         match self_key.cmp(lookup_key) {
-            Ordering::Equal => Some(&self.item),
+            Ordering::Equal => Some(&self),
             Ordering::Less => self.right.as_ref().and_then(|node| node.find(lookup_key)),
             Ordering::Greater => self.left.as_ref().and_then(|node| node.find(lookup_key)),
         }
@@ -134,8 +134,12 @@ impl<K: Ord, T> AVLTree<K, T> {
         self.find(key).is_some()
     }
 
-    fn find(&self, key: &K) -> Option<&T> {
+    fn find_node(&self, key: &K) -> Option<&Node<K, T>> {
         self.root.as_ref().and_then(|root| root.find(key))
+    }
+
+    fn find(&self, key: &K) -> Option<&T> {
+        self.find_node(key).map(|node| &node.item)
     }
 
     fn height(&self) -> u16 {
@@ -144,6 +148,11 @@ impl<K: Ord, T> AVLTree<K, T> {
 
     fn iter(&self) -> AVLTreeIterator<K, T> {
         AVLTreeIterator::new(self)
+    }
+
+    fn pop(&self, key: &K) -> Option<T> {
+        let node = self.find_node(key)?;
+        None
     }
 }
 
@@ -191,9 +200,9 @@ impl<'a, K: Ord, T> Iterator for AVLTreeIterator<'a, K, T> {
 #[cfg(test)]
 mod tests {
     use crate::chapter_8_avl_binary_tree::AVLTree;
+    use rand::SeedableRng;
     use rand::prelude::SliceRandom;
     use rand::rngs::StdRng;
-    use rand::SeedableRng;
 
     #[test]
     fn should_add_and_check_element() {
@@ -287,7 +296,7 @@ mod tests {
     fn should_balance_tree_inserting_random_positions() {
         let size = 100;
         let mut rng = StdRng::seed_from_u64(42);
-        let mut numbers: Vec<i32> = (0..size as i32).collect();
+        let mut numbers: Vec<i32> = (0..size).collect();
         numbers.shuffle(&mut rng);
 
         let mut tree = AVLTree::empty();
@@ -295,9 +304,45 @@ mod tests {
             tree.add(num);
         }
 
-        for i in 0..size as i32 {
+        for i in 0..size {
             assert!(tree.contains(&i));
         }
         assert_eq!(tree.height(), 8);
+    }
+
+    #[test]
+    fn should_pop_by_key() {
+        let mut tree = AVLTree::empty();
+
+        // Add elements
+        for item in 0..10 {
+            tree.add(item);
+        }
+
+        // Pop existing elements
+        assert_eq!(tree.pop(&5), Some(5));
+        assert!(!tree.contains(&5));
+
+        assert_eq!(tree.pop(&0), Some(0));
+        assert!(!tree.contains(&0));
+
+        assert_eq!(tree.pop(&9), Some(9));
+        assert!(!tree.contains(&9));
+
+        assert_eq!(tree.height(), 4);
+
+        // Try to pop non-existent elements
+        assert_eq!(tree.pop(&20), None);
+        assert_eq!(tree.pop(&5), None); // Already removed
+
+        // Verify remaining elements
+        for item in [1, 2, 3, 4, 6, 7, 8] {
+            assert!(tree.contains(&item));
+            assert_eq!(tree.pop(&item), Some(item));
+            assert!(!tree.contains(&item));
+        }
+
+        // Tree should be empty now
+        assert_eq!(tree.height(), 0);
     }
 }
