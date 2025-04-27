@@ -97,91 +97,6 @@ impl<K: Ord, T> Node<K, T> {
 
         self.balance();
     }
-
-    /// Removes a node with the specified key and returns its value
-    /// Returns a tuple containing the removed item (if found) and the new subtree root
-    fn pop_by_key(mut node: Box<Self>, key: &K) -> (Option<T>, Option<Box<Self>>) {
-        // Extract the key from the current node
-        let extract_key = node.extract_key;
-        let self_key = extract_key(&node.item);
-
-        // Compare the current node's key with the key to be removed
-        match self_key.cmp(key) {
-            // Found the key - remove this node
-            Ordering::Equal => {
-                let item = node.item;
-
-                // Case 1: Leaf node (no children)
-                if node.left.is_none() && node.right.is_none() {
-                    return (Some(item), None);
-                }
-
-                // Case 2: Only right child
-                if node.left.is_none() {
-                    return (Some(item), node.right);
-                }
-
-                // Case 3: Only left child
-                if node.right.is_none() {
-                    return (Some(item), node.left);
-                }
-
-                // Case 4: Both children exist - replace with in-order successor
-                let (successor, new_right) = Self::pop_min(node.right.take().unwrap());
-                node.item = successor;
-                node.right = new_right;
-                node.balance();
-
-                (Some(item), Some(node))
-            }
-
-            // Search left subtree
-            Ordering::Greater => {
-                if let Some(left) = node.left.take() {
-                    let (item, new_left) = Self::pop_by_key(left, key);
-                    node.left = new_left;
-                    node.balance();
-                    (item, Some(node))
-                } else {
-                    // Key not found
-                    (None, Some(node))
-                }
-            }
-
-            // Search right subtree
-            Ordering::Less => {
-                if let Some(right) = node.right.take() {
-                    let (item, new_right) = Self::pop_by_key(right, key);
-                    node.right = new_right;
-                    node.balance();
-                    (item, Some(node))
-                } else {
-                    // Key not found
-                    (None, Some(node))
-                }
-            }
-        }
-    }
-
-    /// Removes the minimum value node (leftmost) from the subtree
-    /// Returns a tuple containing the popped item and the new subtree root
-    fn pop_min(mut node: Box<Self>) -> (T, Option<Box<Self>>) {
-        // If this node has no left child, it's the minimum
-        if node.left.is_none() {
-            let item = node.item;
-            // Return the right subtree as the new root
-            return (item, node.right);
-        }
-
-        // Recursively find and remove the minimum node from the left subtree
-        let (item, new_left) = Self::pop_min(node.left.take().unwrap());
-        node.left = new_left;
-
-        // Rebalance the tree and update height
-        node.balance();
-
-        (item, Some(node))
-    }
 }
 
 struct AVLTree<K: Ord, T> {
@@ -229,19 +144,6 @@ impl<K: Ord, T> AVLTree<K, T> {
 
     fn iter(&self) -> AVLTreeIterator<K, T> {
         AVLTreeIterator::new(self)
-    }
-
-    /// Removes and returns the item with the specified key
-    /// Returns None if the key doesn't exist in the tree
-    pub fn pop_by_key(&mut self, key: &K) -> Option<T> {
-        if self.root.is_none() {
-            return None;
-        }
-
-        let root = self.root.take().unwrap();
-        let (item, new_root) = Node::pop_by_key(root, key);
-        self.root = new_root;
-        item
     }
 }
 
@@ -397,41 +299,5 @@ mod tests {
             assert!(tree.contains(&i));
         }
         assert_eq!(tree.height(), 8);
-    }
-
-    #[test]
-    fn should_pop_by_key() {
-        let mut tree = AVLTree::empty();
-
-        // Add elements
-        for item in 0..10 {
-            tree.add(item);
-        }
-
-        // Pop existing elements
-        assert_eq!(tree.pop_by_key(&5), Some(5));
-        assert!(!tree.contains(&5));
-
-        assert_eq!(tree.pop_by_key(&0), Some(0));
-        assert!(!tree.contains(&0));
-
-        assert_eq!(tree.pop_by_key(&9), Some(9));
-        assert!(!tree.contains(&9));
-
-        assert_eq!(tree.height(), 4);
-
-        // Try to pop non-existent elements
-        assert_eq!(tree.pop_by_key(&20), None);
-        assert_eq!(tree.pop_by_key(&5), None); // Already removed
-
-        // Verify remaining elements
-        for item in [1, 2, 3, 4, 6, 7, 8] {
-            assert!(tree.contains(&item));
-            assert_eq!(tree.pop_by_key(&item), Some(item));
-            assert!(!tree.contains(&item));
-        }
-
-        // Tree should be empty now
-        assert_eq!(tree.height(), 0);
     }
 }
