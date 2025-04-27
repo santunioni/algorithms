@@ -34,7 +34,7 @@ impl<K: Ord, T> Node<K, T> {
         let self_key = extract_key(&self.item);
 
         match self_key.cmp(lookup_key) {
-            Ordering::Equal => Some(&self),
+            Ordering::Equal => Some(self),
             Ordering::Less => self.right.as_ref().and_then(|node| node.find(lookup_key)),
             Ordering::Greater => self.left.as_ref().and_then(|node| node.find(lookup_key)),
         }
@@ -97,6 +97,10 @@ impl<K: Ord, T> Node<K, T> {
 
         self.balance();
     }
+
+    fn pop(mut self, lookup_key: &K) -> (Self, Option<Self>) {
+        (self, None)
+    }
 }
 
 struct AVLTree<K: Ord, T> {
@@ -150,9 +154,10 @@ impl<K: Ord, T> AVLTree<K, T> {
         AVLTreeIterator::new(self)
     }
 
-    fn pop(&self, key: &K) -> Option<T> {
-        let node = self.find_node(key)?;
-        None
+    fn pop(&mut self, key: &K) -> Option<T> {
+        let (replacer, popped) = self.root.take()?.pop(key);
+        self.root = Some(replacer.into());
+        Some(popped?.item)
     }
 }
 
