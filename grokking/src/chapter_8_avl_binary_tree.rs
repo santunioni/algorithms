@@ -98,6 +98,18 @@ impl<K: Ord, T> Node<K, T> {
         self.balance();
     }
 
+    fn pop_min(mut self) -> (Option<Self>, Self) {
+        match self.left.take() {
+            None => (None, self),
+            Some(left) => {
+                let (new_left, popped) = left.pop_min();
+                self.left = new_left.map(|v| v.into());
+                self.balance();
+                (Some(self), popped)
+            }
+        }
+    }
+
     fn pop(mut self, lookup_key: &K) -> (Option<Self>, Option<Self>) {
         let extract_key = self.extract_key;
         let self_key = extract_key(&self.item);
@@ -117,7 +129,14 @@ impl<K: Ord, T> Node<K, T> {
                         right.update_height();
                         (Some(*right), Some(self))
                     }
-                    (Some(mut left), Some(mut right)) => (None, None),
+                    (Some(left), Some(right)) => {
+                        // Find the minimum node in the right subtree to become the new root
+                        let (right, mut min_node) = right.pop_min();
+                        min_node.left = Some(left);
+                        min_node.right = right.map(|v| v.into());
+                        min_node.update_height();
+                        (Some(min_node), Some(self))
+                    }
                 }
             }
             Ordering::Less => {
@@ -191,8 +210,8 @@ impl<K: Ord, T> AVLTree<K, T> {
         self.root.as_ref().map_or(0, |root| root.height)
     }
 
-    fn iter(&self) -> AVLTreeIterator<K, T> {
-        AVLTreeIterator::new(self)
+    fn iter(&self) -> AVLItemIterator<K, T> {
+        AVLItemIterator::new(AVLNodeIterator::new(self))
     }
 
     fn pop(&mut self, key: &K) -> Option<T> {
@@ -202,13 +221,13 @@ impl<K: Ord, T> AVLTree<K, T> {
     }
 }
 
-struct AVLTreeIterator<'a, K: Ord, T> {
+struct AVLNodeIterator<'a, K: Ord, T> {
     stack: Vec<&'a Node<K, T>>,
 }
 
-impl<'a, K: Ord, T> AVLTreeIterator<'a, K, T> {
+impl<'a, K: Ord, T> AVLNodeIterator<'a, K, T> {
     fn new(tree: &'a AVLTree<K, T>) -> Self {
-        let mut iterator = AVLTreeIterator {
+        let mut iterator = AVLNodeIterator {
             stack: Vec::with_capacity(tree.height() as usize),
         };
 
@@ -229,8 +248,8 @@ impl<'a, K: Ord, T> AVLTreeIterator<'a, K, T> {
     }
 }
 
-impl<'a, K: Ord, T> Iterator for AVLTreeIterator<'a, K, T> {
-    type Item = &'a T;
+impl<'a, K: Ord, T> Iterator for AVLNodeIterator<'a, K, T> {
+    type Item = &'a Node<K, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.stack.pop()?;
@@ -239,7 +258,25 @@ impl<'a, K: Ord, T> Iterator for AVLTreeIterator<'a, K, T> {
             self.push_left_leg(right);
         }
 
-        Some(&node.item)
+        Some(&node)
+    }
+}
+
+struct AVLItemIterator<'a, K: Ord, T> {
+    avl_node_iterator: AVLNodeIterator<'a, K, T>,
+}
+
+impl<'a, K: Ord, T> AVLItemIterator<'a, K, T> {
+    fn new(avl_node_iterator: AVLNodeIterator<'a, K, T>) -> Self {
+        AVLItemIterator { avl_node_iterator }
+    }
+}
+
+impl<'a, K: Ord, T> Iterator for AVLItemIterator<'a, K, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.avl_node_iterator.next().map(|node| &node.item)
     }
 }
 
