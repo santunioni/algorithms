@@ -98,66 +98,66 @@ impl<K: Ord, T> Node<K, T> {
         self.balance();
     }
 
-    fn pop_min(mut self) -> (Option<Self>, Self) {
-        match self.left.take() {
-            None => (None, self),
+    fn pop_min(mut node: Box<Self>) -> (Option<Box<Self>>, Box<Self>) {
+        match node.left.take() {
+            None => (None, node),
             Some(left) => {
-                let (new_left, popped) = left.pop_min();
-                self.left = new_left.map(|v| v.into());
-                self.balance();
-                (Some(self), popped)
+                let (new_left, popped) = Node::pop_min(left);
+                node.left = new_left;
+                node.balance();
+                (Some(node), popped)
             }
         }
     }
 
-    fn pop(mut self, lookup_key: &K) -> (Option<Self>, Option<Self>) {
-        let extract_key = self.extract_key;
-        let self_key = extract_key(&self.item);
+    fn pop(mut node: Box<Self>, lookup_key: &K) -> (Option<Box<Self>>, Option<Box<Self>>) {
+        let extract_key = node.extract_key;
+        let self_key = extract_key(&node.item);
 
         match self_key.cmp(lookup_key) {
             Ordering::Equal => {
-                let left = self.left.take();
-                let right = self.right.take();
+                let left = node.left.take();
+                let right = node.right.take();
 
                 match (left, right) {
-                    (None, None) => (None, Some(self)),
+                    (None, None) => (None, Some(node)),
                     (Some(mut left), None) => {
                         left.update_height();
-                        (Some(*left), Some(self))
+                        (Some(left), Some(node))
                     }
                     (None, Some(mut right)) => {
                         right.update_height();
-                        (Some(*right), Some(self))
+                        (Some(right), Some(node))
                     }
                     (Some(left), Some(right)) => {
                         // Find the minimum node in the right subtree to become the new root
-                        let (right, mut min_node) = right.pop_min();
+                        let (right, mut min_node) = Node::pop_min(right);
                         min_node.left = Some(left);
-                        min_node.right = right.map(|v| v.into());
+                        min_node.right = right;
                         min_node.update_height();
-                        (Some(min_node), Some(self))
+                        (Some(min_node), Some(node))
                     }
                 }
             }
             Ordering::Less => {
-                let Some(right) = self.right.take() else {
-                    return (Some(self), None);
+                let Some(right) = node.right.take() else {
+                    return (Some(node), None);
                 };
-                let (new_right, popped) = right.pop(lookup_key);
-                self.right = new_right.map(|v| v.into());
-                self.balance();
+                let (new_right, popped) = Node::pop(right, lookup_key);
+                node.right = new_right;
+                node.balance();
 
-                (Some(self), popped)
+                (Some(node), popped)
             }
             Ordering::Greater => {
-                let Some(left) = self.left.take() else {
-                    return (Some(self), None);
+                let Some(left) = node.left.take() else {
+                    return (Some(node), None);
                 };
-                let (new_left, popped) = left.pop(lookup_key);
-                self.left = new_left.map(|v| v.into());
-                self.balance();
+                let (new_left, popped) = Node::pop(left, lookup_key);
+                node.left = new_left;
+                node.balance();
 
-                (Some(self), popped)
+                (Some(node), popped)
             }
         }
     }
@@ -215,8 +215,8 @@ impl<K: Ord, T> AVLTree<K, T> {
     }
 
     fn pop(&mut self, key: &K) -> Option<T> {
-        let (replacer, popped) = self.root.take()?.pop(key);
-        self.root = replacer.map(|v| v.into());
+        let (replacer, popped) = Node::pop(self.root.take()?, key);
+        self.root = replacer;
         Some(popped?.item)
     }
 }
