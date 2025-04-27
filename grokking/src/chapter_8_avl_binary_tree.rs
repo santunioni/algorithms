@@ -97,6 +97,26 @@ impl<K: Ord, T> Node<K, T> {
 
         self.balance();
     }
+
+    /// Removes the minimum value node (leftmost) from the subtree
+    /// Returns a tuple containing the popped item and the new subtree root
+    fn pop_min(mut node: Box<Self>) -> (T, Option<Box<Self>>) {
+        // If this node has no left child, it's the minimum
+        if node.left.is_none() {
+            let item = node.item;
+            // Return the right subtree as the new root
+            return (item, node.right);
+        }
+
+        // Recursively find and remove the minimum node from the left subtree
+        let (item, new_left) = Self::pop_min(node.left.take().unwrap());
+        node.left = new_left;
+
+        // Rebalance the tree and update height
+        node.balance();
+
+        (item, Some(node))
+    }
 }
 
 struct AVLTree<K: Ord, T> {
@@ -144,6 +164,16 @@ impl<K: Ord, T> AVLTree<K, T> {
 
     fn iter(&self) -> AVLTreeIterator<K, T> {
         AVLTreeIterator::new(self)
+    }
+
+    /// Removes and returns the minimum value (leftmost node) from the tree
+    /// Returns None if the tree is empty
+    pub fn pop(&mut self) -> Option<T> {
+        self.root.take().map(|root| {
+            let (item, new_root) = Node::pop_min(root);
+            self.root = new_root;
+            item
+        })
     }
 }
 
@@ -299,5 +329,58 @@ mod tests {
             assert!(tree.contains(&i));
         }
         assert_eq!(tree.height(), 8);
+    }
+
+    #[test]
+    fn should_pop_in_order() {
+        let mut tree = AVLTree::empty();
+
+        // Add elements in random order
+        let elements = [5, 3, 8, 2, 4, 7, 9, 1, 6];
+        for &elem in &elements {
+            tree.add(elem);
+        }
+
+        // Pop elements one by one - should come out in ascending order
+        let mut popped = Vec::new();
+        while let Some(item) = tree.pop() {
+            popped.push(item);
+
+            // Tree should still be balanced after each pop
+            assert!(tree.height() <= 4);
+        }
+
+        // Verify elements came out in sorted order
+        let mut expected = elements.to_vec();
+        expected.sort();
+        assert_eq!(popped, expected);
+
+        // Tree should be empty now
+        assert_eq!(tree.height(), 0);
+        assert!(tree.pop().is_none());
+    }
+
+    #[test]
+    fn should_handle_pop_edge_cases() {
+        // Empty tree
+        let mut empty_tree: AVLTree<i32, i32> = AVLTree::empty();
+        assert!(empty_tree.pop().is_none());
+
+        // Single element tree
+        let mut single_tree = AVLTree::empty();
+        single_tree.add(42);
+        assert_eq!(single_tree.pop(), Some(42));
+        assert!(single_tree.pop().is_none());
+
+        // Tree with only right branches
+        let mut right_tree = AVLTree::empty();
+        for i in 1..=5 {
+            right_tree.add(i);
+        }
+
+        for i in 1..=5 {
+            assert_eq!(right_tree.pop(), Some(i));
+        }
+        assert!(right_tree.pop().is_none());
     }
 }
