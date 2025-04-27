@@ -215,8 +215,8 @@ impl<K: Ord, T> AVLTree<K, T> {
     }
 
     fn pop(&mut self, key: &K) -> Option<T> {
-        let (replacer, popped) = Node::pop(self.root.take()?, key);
-        self.root = replacer;
+        let (root, popped) = Node::pop(self.root.take()?, key);
+        self.root = root;
         Some(popped?.item)
     }
 }
