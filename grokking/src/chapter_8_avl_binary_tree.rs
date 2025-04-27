@@ -98,36 +98,36 @@ impl<K: Ord, T> Node<K, T> {
         self.balance();
     }
 
-    fn pop_min(mut node: Box<Self>) -> (Option<Box<Self>>, Box<Self>) {
-        match node.left.take() {
-            None => (None, node),
+    fn pop_min(mut this: Box<Self>) -> (Option<Box<Self>>, Box<Self>) {
+        match this.left.take() {
+            None => (None, this),
             Some(left) => {
                 let (new_left, popped) = Node::pop_min(left);
-                node.left = new_left;
-                node.balance();
-                (Some(node), popped)
+                this.left = new_left;
+                this.balance();
+                (Some(this), popped)
             }
         }
     }
 
-    fn pop(mut node: Box<Self>, lookup_key: &K) -> (Option<Box<Self>>, Option<Box<Self>>) {
-        let extract_key = node.extract_key;
-        let self_key = extract_key(&node.item);
+    fn pop(mut this: Box<Self>, lookup_key: &K) -> (Option<Box<Self>>, Option<Box<Self>>) {
+        let extract_key = this.extract_key;
+        let self_key = extract_key(&this.item);
 
         match self_key.cmp(lookup_key) {
             Ordering::Equal => {
-                let left = node.left.take();
-                let right = node.right.take();
+                let left = this.left.take();
+                let right = this.right.take();
 
                 match (left, right) {
-                    (None, None) => (None, Some(node)),
+                    (None, None) => (None, Some(this)),
                     (Some(mut left), None) => {
                         left.update_height();
-                        (Some(left), Some(node))
+                        (Some(left), Some(this))
                     }
                     (None, Some(mut right)) => {
                         right.update_height();
-                        (Some(right), Some(node))
+                        (Some(right), Some(this))
                     }
                     (Some(left), Some(right)) => {
                         // Find the minimum node in the right subtree to become the new root
@@ -135,29 +135,29 @@ impl<K: Ord, T> Node<K, T> {
                         min_node.left = Some(left);
                         min_node.right = right;
                         min_node.update_height();
-                        (Some(min_node), Some(node))
+                        (Some(min_node), Some(this))
                     }
                 }
             }
             Ordering::Less => {
-                let Some(right) = node.right.take() else {
-                    return (Some(node), None);
+                let Some(right) = this.right.take() else {
+                    return (Some(this), None);
                 };
                 let (new_right, popped) = Node::pop(right, lookup_key);
-                node.right = new_right;
-                node.balance();
+                this.right = new_right;
+                this.balance();
 
-                (Some(node), popped)
+                (Some(this), popped)
             }
             Ordering::Greater => {
-                let Some(left) = node.left.take() else {
-                    return (Some(node), None);
+                let Some(left) = this.left.take() else {
+                    return (Some(this), None);
                 };
                 let (new_left, popped) = Node::pop(left, lookup_key);
-                node.left = new_left;
-                node.balance();
+                this.left = new_left;
+                this.balance();
 
-                (Some(node), popped)
+                (Some(this), popped)
             }
         }
     }
