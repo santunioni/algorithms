@@ -98,8 +98,51 @@ impl<K: Ord, T> Node<K, T> {
         self.balance();
     }
 
-    fn pop(mut self, lookup_key: &K) -> (Self, Option<Self>) {
-        (self, None)
+    fn pop(mut self, lookup_key: &K) -> (Option<Self>, Option<Self>) {
+        let extract_key = self.extract_key;
+        let self_key = extract_key(&self.item);
+
+        match self_key.cmp(lookup_key) {
+            Ordering::Equal => {
+                let left = self.left.take();
+                let right = self.right.take();
+
+                match (left, right) {
+                    (None, None) => (None, Some(self)),
+                    (Some(mut left), None) => {
+                        left.update_height();
+                        (Some(*left), Some(self))
+                    }
+                    (None, Some(mut right)) => {
+                        right.update_height();
+                        (Some(*right), Some(self))
+                    }
+                    (Some(mut left), Some(mut right)) => {
+                        (None, None)
+                    }
+                }
+            }
+            Ordering::Less => {
+                let Some(right) = self.right.take() else {
+                    return (Some(self), None);
+                };
+                let (new_right, popped) = right.pop(lookup_key);
+                self.right = new_right.map(|v| v.into());
+                self.balance();
+
+                (Some(self), popped)
+            }
+            Ordering::Greater => {
+                let Some(left) = self.left.take() else {
+                    return (Some(self), None);
+                };
+                let (new_left, popped) = left.pop(lookup_key);
+                self.left = new_left.map(|v| v.into());
+                self.balance();
+
+                (Some(self), popped)
+            }
+        }
     }
 }
 
@@ -156,7 +199,7 @@ impl<K: Ord, T> AVLTree<K, T> {
 
     fn pop(&mut self, key: &K) -> Option<T> {
         let (replacer, popped) = self.root.take()?.pop(key);
-        self.root = Some(replacer.into());
+        self.root = replacer.map(|v| v.into());
         Some(popped?.item)
     }
 }
