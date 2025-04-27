@@ -117,9 +117,7 @@ impl<K: Ord, T> Node<K, T> {
                         right.update_height();
                         (Some(*right), Some(self))
                     }
-                    (Some(mut left), Some(mut right)) => {
-                        (None, None)
-                    }
+                    (Some(mut left), Some(mut right)) => (None, None),
                 }
             }
             Ordering::Less => {
