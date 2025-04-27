@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::collections::LinkedList;
 use std::mem;
 
 type ExtractKey<K, T> = fn(&T) -> &K;
@@ -258,7 +259,7 @@ impl<'a, K: Ord, T> Iterator for AVLNodeIterator<'a, K, T> {
             self.push_left_leg(right);
         }
 
-        Some(&node)
+        Some(node)
     }
 }
 
@@ -277,6 +278,26 @@ impl<'a, K: Ord, T> Iterator for AVLItemIterator<'a, K, T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.avl_node_iterator.next().map(|node| &node.item)
+    }
+}
+
+/// Manual implementation of Drop to avoid the language's default behavior
+/// which could overflow the call stack.
+impl<K: Ord, T> Drop for AVLTree<K, T> {
+    fn drop(&mut self) {
+        let mut list = LinkedList::new();
+        if let Some(root) = self.root.take() {
+            list.push_back(root);
+        }
+
+        while let Some(mut node) = list.pop_front() {
+            if let Some(node) = node.left.take() {
+                list.push_back(node)
+            }
+            if let Some(node) = node.right.take() {
+                list.push_back(node)
+            }
+        }
     }
 }
 
