@@ -1,2 +1,2 @@
 # algorithms
-Learn Rust and Algorithms
+Practicing algorithms and data structures to learn Rust
