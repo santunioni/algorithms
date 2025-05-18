@@ -9,6 +9,7 @@ struct Waypoint {
 }
 
 pub(crate) struct DijkstraAlgorithm<'a, T> {
+    /// Stores the vertex id with its priority, which is minus the distance from the departure vertex.
     priority_queue: PriorityQueue<VertexId, Weight>,
     visited_vertices: HashSet<VertexId>,
     shorter_waypoints: HashMap<VertexId, Waypoint>,
@@ -46,7 +47,8 @@ impl<'a, T> DijkstraAlgorithm<'a, T> {
 
     fn populate_shorter_legs(&mut self) -> Option<()> {
         loop {
-            let (parent_id, parent_distance_from_departure) = self.get_next()?;
+            let (parent_id, parent_distance_from_departure) =
+                self.get_vertex_closer_to_departure_not_visited_yet()?;
 
             if parent_id == self.destination {
                 return None;
@@ -56,7 +58,7 @@ impl<'a, T> DijkstraAlgorithm<'a, T> {
                 self.save_waypoint(
                     get_neighbor.get_id(),
                     Waypoint {
-                        parent_vertex_id: parent_id,
+                        parent_vertex_id: get_neighbor.get_id(),
                         distance_from_departure: parent_distance_from_departure
                             + get_neighbor.weight,
                     },
@@ -65,10 +67,10 @@ impl<'a, T> DijkstraAlgorithm<'a, T> {
         }
     }
 
-    fn get_next(&mut self) -> Option<(VertexId, Weight)> {
-        let (next_id, minus_weight) = self.priority_queue.pop()?;
+    fn get_vertex_closer_to_departure_not_visited_yet(&mut self) -> Option<(VertexId, Weight)> {
+        let (next_id, minus_distance) = self.priority_queue.pop()?;
         self.visited_vertices.insert(next_id);
-        Some((next_id, -minus_weight))
+        Some((next_id, -minus_distance))
     }
 
     fn save_waypoint(&mut self, waypoint_vertex: VertexId, waypoint: Waypoint) {
