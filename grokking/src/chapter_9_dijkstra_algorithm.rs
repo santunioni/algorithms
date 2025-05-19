@@ -2,10 +2,10 @@ use crate::chapter_6_graph::{Distance, Graph, Path, VertexId, Weight};
 use priority_queue::PriorityQueue;
 use std::collections::{HashMap, HashSet};
 
-#[derive(Clone, Copy)]
 struct Waypoint {
-    distance_from_departure: Distance,
-    parent_vertex_id: VertexId,
+    distance: Distance,
+    parent: VertexId,
+    vertex: VertexId,
 }
 
 pub(crate) struct DijkstraAlgorithm<'a, T> {
@@ -29,80 +29,82 @@ impl<'a, T> DijkstraAlgorithm<'a, T> {
             graph,
         };
 
-        dt.save_waypoint(
-            departure,
-            Waypoint {
-                parent_vertex_id: departure,
-                distance_from_departure: 0,
-            },
-        );
+        dt.save_waypoint(Waypoint {
+            vertex: departure,
+            parent: departure,
+            distance: 0,
+        });
 
         dt
     }
 
     pub(crate) fn into_shortest_path(mut self) -> Option<Path<'a, T>> {
-        self.populate_shorter_legs();
+        self.look_for_waypoints();
         self.get_path()
     }
 
-    fn populate_shorter_legs(&mut self) -> Option<()> {
+    #[inline]
+    fn look_for_waypoints(&mut self) -> Option<()> {
         loop {
-            let (parent_id, parent_distance_from_departure) =
+            let (parent, parent_distance_from_departure) =
                 self.get_vertex_closer_to_departure_not_visited_yet()?;
 
-            if parent_id == self.destination {
+            if parent == self.destination {
                 return None;
             }
 
-            for get_neighbor in self.graph.get_vertex(&parent_id)?.get_neighbors() {
-                self.save_waypoint(
-                    get_neighbor.get_id(),
-                    Waypoint {
-                        parent_vertex_id: get_neighbor.get_id(),
-                        distance_from_departure: parent_distance_from_departure
-                            + get_neighbor.weight,
-                    },
-                );
+            for get_neighbor in self.graph.get_vertex(&parent)?.get_neighbors() {
+                let waypoint = Waypoint {
+                    vertex: get_neighbor.get_id(),
+                    parent,
+                    distance: parent_distance_from_departure + get_neighbor.weight,
+                };
+
+                if self.discovered_shorter_path(&waypoint)
+                    && !self.visited_vertices.contains(&waypoint.vertex)
+                {
+                    self.save_waypoint(waypoint);
+                };
             }
         }
     }
 
+    #[inline]
     fn get_vertex_closer_to_departure_not_visited_yet(&mut self) -> Option<(VertexId, Weight)> {
         let (next_id, minus_distance) = self.priority_queue.pop()?;
         self.visited_vertices.insert(next_id);
         Some((next_id, -minus_distance))
     }
 
-    fn save_waypoint(&mut self, waypoint_vertex: VertexId, waypoint: Waypoint) {
-        let discovered_shorter_path_to_waypoint = if let Some(known_distance) = self
+    #[inline]
+    fn discovered_shorter_path(&self, waypoint: &Waypoint) -> bool {
+        if let Some(known_distance) = self
             .shorter_waypoints
-            .get(&waypoint_vertex)
-            .map(|v| v.distance_from_departure)
+            .get(&waypoint.vertex)
+            .map(|v| v.distance)
         {
-            waypoint.distance_from_departure < known_distance
+            waypoint.distance < known_distance
         } else {
             true
-        };
-
-        if discovered_shorter_path_to_waypoint && !self.visited_vertices.contains(&waypoint_vertex)
-        {
-            self.shorter_waypoints.insert(waypoint_vertex, waypoint);
-            self.priority_queue
-                .push(waypoint_vertex, -waypoint.distance_from_departure);
-        };
+        }
     }
 
+    #[inline]
+    fn save_waypoint(&mut self, waypoint: Waypoint) {
+        self.priority_queue
+            .push(waypoint.vertex, -waypoint.distance);
+        self.shorter_waypoints.insert(waypoint.vertex, waypoint);
+    }
+
+    #[inline]
     fn get_path(&self) -> Option<Path<'a, T>> {
         let mut waypoints = vec![self.graph.get_vertex(&self.destination)?.vertex];
         let mut waypoint = self.destination;
-        let distance = self
-            .shorter_waypoints
-            .get(&self.destination)?
-            .distance_from_departure;
+        let distance = self.shorter_waypoints.get(&self.destination)?.distance;
 
         loop {
             let travel = self.shorter_waypoints.get(&waypoint)?;
-            waypoint = travel.parent_vertex_id;
+            waypoint = travel.parent;
             waypoints.push(self.graph.get_vertex(&waypoint)?.vertex);
             if waypoint == self.departure {
                 break;
