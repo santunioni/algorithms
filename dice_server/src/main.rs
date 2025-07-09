@@ -4,6 +4,7 @@ mod tracer;
 use std::convert::Infallible;
 use std::net::SocketAddr;
 
+use crate::extended_future::ExtendedFuture;
 use crate::tracer::{global_tracer, init_otel};
 use http_body_util::Full;
 use hyper::Method;
@@ -12,24 +13,15 @@ use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
+use opentelemetry::KeyValue;
 use opentelemetry::trace::{Span, SpanBuilder, SpanKind, Status, TraceContextExt, Tracer};
-use opentelemetry::{InstrumentationScope, KeyValue, global};
 use rand::Rng;
 use rayon::ThreadPoolBuilder;
 use tokio::net::TcpListener;
 use tokio::runtime::Builder;
 
 async fn roll_dice(_: Request<hyper::body::Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
-    let common_scope_attributes = vec![KeyValue::new("scope-key", "scope-value")];
-    let scope = InstrumentationScope::builder("basic")
-        .with_version("1.0")
-        .with_attributes(common_scope_attributes)
-        .build();
-
-    let tracer = global::tracer_with_scope(scope.clone());
-    let meter = global::meter_with_scope(scope);
-
-    tracer.in_span("Main operation", |cx| {
+    global_tracer().in_span("Main operation", |cx| {
         let span = cx.span();
         span.add_event(
             "Nice operation!".to_string(),
@@ -39,14 +31,18 @@ async fn roll_dice(_: Request<hyper::body::Incoming>) -> Result<Response<Full<By
 
         tracing::error!(name: "my-event-inside-span", target: "my-target", "hello from {}. My price is {}. I am also inside a Span!", "banana", 2.99);
 
-        tracer.in_span("Sub operation...", |cx| {
+        global_tracer().in_span("Sub operation...", |cx| {
             let span = cx.span();
             span.set_attribute(KeyValue::new("another.key", "yes"));
             span.add_event("Sub span event", vec![]);
         });
     });
 
-    tracing::error!(name: "my-event", target: "my-target", "hello from {}. My price is {}", "apple", 1.99);
+    async {
+        tracing::error!(name: "my-future", target: "trying-future", "hello from {}. My price is {}", "apple", 1.99);
+    }
+        .in_child_span("Trying for the future")
+        .await;
 
     let random_number = rand::rng().random_range(1..=6);
     tracing::error!(random_number = random_number, "Found number");
@@ -63,7 +59,7 @@ async fn handle(req: Request<hyper::body::Incoming>) -> Result<Response<Full<Byt
         .start(tracer);
 
     match (req.method(), req.uri().path()) {
-        (&Method::GET, "/rolldice") => roll_dice(req).await,
+        (&Method::GET, "/rolldice") => roll_dice(req).in_span(span).await,
         _ => {
             span.set_status(Status::Ok);
             Ok(Response::builder()
