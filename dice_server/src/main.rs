@@ -4,7 +4,7 @@ mod tracer;
 use std::convert::Infallible;
 use std::net::SocketAddr;
 
-use crate::tracer::{get_tracer, init_tracer_provider, install_tracing_library};
+use crate::tracer::{global_tracer, init_otel};
 use http_body_util::Full;
 use hyper::Method;
 use hyper::body::Bytes;
@@ -56,7 +56,7 @@ async fn roll_dice(_: Request<hyper::body::Incoming>) -> Result<Response<Full<By
 }
 
 async fn handle(req: Request<hyper::body::Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
-    let tracer = get_tracer();
+    let tracer = global_tracer();
 
     let mut span = SpanBuilder::from_name(format!("{} {}", req.method(), req.uri().path()))
         .with_kind(SpanKind::Server)
@@ -85,8 +85,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .build()?;
 
     tokio_runtime.block_on(async {
-        init_tracer_provider();
-        install_tracing_library();
+        let _guard = init_otel();
         let listener = TcpListener::bind(addr).await?;
 
         loop {
