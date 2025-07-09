@@ -1,5 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use grokking::chapter_3_tail_factorial::{factorial_with_tail, factorial_without_tail};
+use grokking::chapter_3_tail_factorial::factorial_without_tail;
 
 fn criterion_benchmark(c: &mut Criterion) {
     let number = 34;

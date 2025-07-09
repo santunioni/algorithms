@@ -8,7 +8,7 @@ pub struct SearchInput {
 
 impl SearchInput {
     pub fn build(args: Vec<String>) -> Result<SearchInput, &'static str> {
-        let query = Self::read_string_variable(&args, "search-query").unwrap_or(String::new());
+        let query = Self::read_string_variable(&args, "search-query").unwrap_or_default();
         let ignore_case = Self::read_boolean_variable(&args, "ignore-case");
         let file_path =
             Self::read_string_variable(&args, "file-path").ok_or("Missing file-path variable")?;
@@ -42,7 +42,7 @@ impl SearchInput {
             if !flag.starts_with(&flag_name) {
                 continue;
             }
-            let flag_with_equal = format!("{}=", flag_name);
+            let flag_with_equal = format!("{flag_name}=");
             let value = flag.replace(&flag_with_equal, "");
             if !value.is_empty() {
                 return Some(value);

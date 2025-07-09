@@ -78,7 +78,7 @@ impl Matrix {
             SubMatrix::Filled {
                 cols_window_from_parent: MatrixWindow(0, self.cols - 1),
                 rows_window_from_parent: MatrixWindow(0, self.rows - 1),
-                parent: &self,
+                parent: self,
             }
         }
     }

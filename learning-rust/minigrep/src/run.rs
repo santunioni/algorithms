@@ -31,7 +31,7 @@ pub fn run_with_args(args: Vec<String>, enable_print: bool) {
 
     for line in search_result_iter {
         if enable_print {
-            println!("{}", line)
+            println!("{line}")
         }
     }
 }

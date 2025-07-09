@@ -14,7 +14,7 @@ use hyper::service::service_fn;
 use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
 use opentelemetry::KeyValue;
-use opentelemetry::trace::{Span, SpanBuilder, SpanKind, Status, TraceContextExt, Tracer};
+use opentelemetry::trace::{Span, SpanKind, Status, TraceContextExt, Tracer};
 use rand::Rng;
 use rayon::ThreadPoolBuilder;
 use tokio::net::TcpListener;
@@ -54,7 +54,8 @@ async fn roll_dice(_: Request<hyper::body::Incoming>) -> Result<Response<Full<By
 async fn handle(req: Request<hyper::body::Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
     let tracer = global_tracer();
 
-    let mut span = SpanBuilder::from_name(format!("{} {}", req.method(), req.uri().path()))
+    let mut span = tracer
+        .span_builder(format!("{} {}", req.method(), req.uri().path()))
         .with_kind(SpanKind::Server)
         .start(tracer);
 
@@ -92,7 +93,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     .serve_connection(io, service_fn(handle))
                     .await
                 {
-                    eprintln!("Error serving connection: {:?}", err);
+                    eprintln!("Error serving connection: {err:?}");
                 }
             });
         }

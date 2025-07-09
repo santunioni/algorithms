@@ -126,11 +126,11 @@ mod tests {
         let mut map = HashMap::new();
 
         for i in 0..1000 {
-            map.insert(format!("key{}", i), i);
+            map.insert(format!("key{i}"), i);
         }
 
         for i in 0..1000 {
-            assert_eq!(map.get(&format!("key{}", i)), Some(&i));
+            assert_eq!(map.get(&format!("key{i}")), Some(&i));
         }
         assert_eq!(map.size(), 1000);
     }

@@ -18,59 +18,23 @@ pub fn global_tracer() -> &'static BoxedTracer {
 
 pub fn init_otel() -> OtelProviders {
     let logger_provider = logger_provider();
-    let otel_layer = OpenTelemetryTracingBridge::new(&logger_provider);
-
-    // To prevent a telemetry-induced-telemetry loop, OpenTelemetry's own internal
-    // logging is properly suppressed. However, logs emitted by external components
-    // (such as reqwest, tonic, etc.) are not suppressed as they do not propagate
-    // OpenTelemetry context. Until this issue is addressed
-    // (https://github.com/open-telemetry/opentelemetry-rust/issues/2877),
-    // filtering like this is the best way to suppress such logs.
-    //
-    // The filter levels are set as follows:
-    // - Allow `info` level and above by default.
-    // - Completely restrict logs from `hyper`, `tonic`, `h2`, and `reqwest`.
-    //
-    // Note: This filtering will also drop logs from these components even when
-    // they are used outside of the OTLP Exporter.
-    let filter_otel = EnvFilter::from_default_env()
-        .add_directive("hyper=off".parse().unwrap())
-        .add_directive("tonic=off".parse().unwrap())
-        .add_directive("h2=off".parse().unwrap())
-        .add_directive("reqwest=off".parse().unwrap());
-    let otel_layer = otel_layer.with_filter(filter_otel);
+    let otel_layer =
+        OpenTelemetryTracingBridge::new(&logger_provider).with_filter(filter_for_otel_layer());
 
     let fmt_layer = tracing_subscriber::fmt::layer()
         .with_thread_names(true)
-        .pretty()
+        .pretty() // We must use json() in production
         .with_filter(EnvFilter::from_default_env());
 
-    // Initialize the tracing subscriber with the OpenTelemetry layer and the
-    // Fmt layer.
     tracing_subscriber::registry()
         .with(otel_layer)
         .with(fmt_layer)
         .init();
 
-    // At this point Logs (OTel Logs and Fmt Logs) are initialized, which will
-    // allow internal-logs from Tracing/Metrics initializer to be captured.
-
     let tracer_provider = tracer_provider();
-    // Set the global tracer provider using a clone of the tracer_provider.
-    // Setting global tracer provider is required if other parts of the application
-    // uses global::tracer() or global::tracer_with_version() to get a tracer.
-    // Cloning simply creates a new reference to the same tracer provider. It is
-    // important to hold on to the tracer_provider here, so as to invoke
-    // shutdown on it when application ends.
     global::set_tracer_provider(tracer_provider.clone());
 
     let meter_provider = meter_provider();
-    // Set the global meter provider using a clone of the meter_provider.
-    // Setting global meter provider is required if other parts of the application
-    // uses global::meter() or global::meter_with_version() to get a meter.
-    // Cloning simply creates a new reference to the same meter provider. It is
-    // important to hold on to the meter_provider here, to invoke
-    // shutdown on it when application ends.
     global::set_meter_provider(meter_provider.clone());
 
     OtelProviders {
@@ -78,6 +42,27 @@ pub fn init_otel() -> OtelProviders {
         meter_provider,
         logger_provider,
     }
+}
+
+/// To prevent a telemetry-induced-telemetry loop, OpenTelemetry's own internal
+/// logging is properly suppressed. However, logs emitted by external components
+/// (such as reqwest, tonic, etc.) are not suppressed as they do not propagate
+/// OpenTelemetry context. Until this issue is addressed
+/// (https://github.com/open-telemetry/opentelemetry-rust/issues/2877),
+/// filtering like this is the best way to suppress such logs.
+///
+/// The filter levels are set as follows:
+/// - Allow `info` level and above by default.
+/// - Completely restrict logs from `hyper`, `tonic`, `h2`, and `reqwest`.
+///
+/// Note: This filtering will also drop logs from these components even when
+/// they are used outside of the OTLP Exporter.
+fn filter_for_otel_layer() -> EnvFilter {
+    EnvFilter::from_default_env()
+        .add_directive("hyper=off".parse().unwrap())
+        .add_directive("tonic=off".parse().unwrap())
+        .add_directive("h2=off".parse().unwrap())
+        .add_directive("reqwest=off".parse().unwrap())
 }
 
 pub struct OtelProviders {
@@ -120,14 +105,48 @@ fn logger_provider() -> SdkLoggerProvider {
 }
 
 fn tracer_provider() -> SdkTracerProvider {
-    let exporter = SpanExporter::default();
+    // Conditionally use datadog here
+    // Remember to set_text_map_propagator(DatadogPropagator::default()) to push baggage forward
+    // To read baggage, use for example (http):
+    // let parent_ctx =  get_text_map_propagator(|propagator| propagator.extract(&HeaderExtractor(request.headers())));
+    // sqs should have something similar
+
+    // The SpanExporter::default() will echo spans to stdout, useful for debugging
     SdkTracerProvider::builder()
         .with_resource(get_resource())
-        .with_batch_exporter(exporter)
+        .with_batch_exporter(SpanExporter::default())
         .build()
+
+    // Uncomment the following lines to enable Datadog tracing
+    // let mut tracer_builder = opentelemetry_datadog::new_pipeline()
+    //     .with_api_version(opentelemetry_datadog::ApiVersion::Version05)
+    //     .with_service_name(DD_SERVICE.to_owned())
+    //     .with_trace_config(Config::default());
+    //
+    // if let Some(agent) = DD_AGENT_ENDPOINT.as_ref() {
+    //     tracer_builder = tracer_builder.with_agent_endpoint(agent);
+    // }
+    //
+    // if let Some(version) = DD_VERSION.as_ref() {
+    //     tracer_builder = tracer_builder.with_version(version);
+    // }
+    //
+    // let client = reqwest::ClientBuilder::new()
+    //     .pool_max_idle_per_host(0)
+    //     .build()
+    //     .unwrap();
+    //
+    // global::set_tracer_provider(
+    //     tracer_builder
+    //         .with_http_client::<reqwest::Client>(client)
+    //         .install_batch()
+    //         .expect("Could not conclude Datadog batch tracer pipeline"),
+    // );
 }
 
 fn meter_provider() -> SdkMeterProvider {
+    // How can we use Prometheus here?
+    // Or should we export to datadog agent directly? (prometheus would export to datadog anyway)
     let exporter = MetricExporter::builder().build();
 
     SdkMeterProvider::builder()

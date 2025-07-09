@@ -252,7 +252,7 @@ impl<'a> SubMatrix<'a> {
                     SubMatrix::Empty
                 };
 
-                let right = if cols >= at_col + 1 {
+                let right = if cols > at_col {
                     SubMatrix::Filled {
                         rows_window_from_parent: rows_window_from_parent.clone(),
                         cols_window_from_parent: MatrixWindow(at_col, cols - 1),
@@ -287,7 +287,7 @@ impl<'a> SubMatrix<'a> {
                     SubMatrix::Empty
                 };
 
-                let bottom = if rows >= at_row + 1 {
+                let bottom = if rows > at_row {
                     SubMatrix::Filled {
                         rows_window_from_parent: MatrixWindow(at_row, rows - 1),
                         cols_window_from_parent: cols_window_from_parent.clone(),
@@ -328,7 +328,7 @@ impl<'a> Mul<Self> for &SubMatrix<'a> {
             return Err(MultiplicationDimensionsDontMatch);
         }
 
-        return Ok(self.multiply_baseline(rhs));
+        Ok(self.multiply_baseline(rhs))
 
         // let left_rows = self.rows();
         // let inner_multiplication_index = self.cols();

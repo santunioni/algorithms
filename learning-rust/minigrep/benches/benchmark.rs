@@ -16,7 +16,7 @@ To an admiring bog!";
 
     let file_path = "/tmp/benchmark-text.txt";
 
-    fs::write(&file_path, contents).expect("Benchmark text should be writtem");
+    fs::write(file_path, contents).expect("Benchmark text should be writtem");
 
     let command_case_sensitive = format!("minigrep --file-path={file_path} --query=nobody");
     let command_case_insensitive =

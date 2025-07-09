@@ -6,7 +6,7 @@
 fn main() {
     let my_option: Option<()> = None;
     if let Some(my) = my_option {
-        println!("{:?}", my_option);
+        println!("{my_option:?}");
     }
 
     let my_arr = &[

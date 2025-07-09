@@ -114,7 +114,7 @@ mod tests {
         }
 
         for i in 0..1000 {
-            assert!(map.contains(&format!("key{}", i)));
+            assert!(map.contains(&format!("key{i}")));
         }
         assert_eq!(map.size(), 1000);
     }

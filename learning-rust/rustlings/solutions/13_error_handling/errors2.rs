@@ -26,10 +26,7 @@ fn total_cost(item_quantity: &str) -> Result<i32, ParseIntError> {
     //                                    ^ added
 
     // Equivalent to this verbose version:
-    let qty = match item_quantity.parse::<i32>() {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
+    let qty = item_quantity.parse::<i32>()?;
 
     Ok(qty * cost_per_item + processing_fee)
 }
