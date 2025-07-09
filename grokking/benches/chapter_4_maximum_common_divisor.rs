@@ -4,11 +4,15 @@ use grokking::chapter_4_maximum_common_divisor::{
 };
 
 fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("Euclid's Algorithm for GCD", |b| {
-        b.iter(|| greatest_common_divisor_recursive_euclides(1680, 640))
-    });
+    // c.bench_function("Euclid's Algorithm for GCD", |b| {
+    //     b.iter(|| greatest_common_divisor_recursive_euclides(1680, 640))
+    // });
+    //
+    // c.bench_function("Simple Algorithm for GCD", |b| {
+    //     b.iter(|| greatest_common_divisor_simpler_but_slow(1680, 640))
+    // });
 
-    c.bench_function("Simple Algorithm for GCD", |b| {
+    c.bench_function("GCD", |b| {
         b.iter(|| greatest_common_divisor_simpler_but_slow(1680, 640))
     });
 }

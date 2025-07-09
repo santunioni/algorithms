@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["grokking", "learning-rust/http-server", "learning-rust/minigrep", "learning-rust/rustlings", "learning-rust/strassen"]
+members = ["grokking", "learning-rust/http-server", "learning-rust/minigrep", "learning-rust/rustlings", "learning-rust/strassen", "dice_server"]
 
 [profile.release]
 #panic = "abort"

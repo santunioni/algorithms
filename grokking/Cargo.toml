@@ -12,9 +12,10 @@ bacon = "3.12.0"
 criterion = "0.5.1"
 tailcall = "1.0.1"
 
-[[bench]]
-name = "chapter_3_tail_factorial"
-harness = false
+#[[bench]]
+#name = "chapter_3_tail_factorial"
+#harness = false
+
 [[bench]]
 name = "chapter_4_maximum_common_divisor"
 harness = false
